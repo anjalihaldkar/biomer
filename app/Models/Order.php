@@ -12,11 +12,15 @@ class Order extends Model
         'address', 'city', 'state', 'pincode', 'notes',
         'total_amount', 'status',
         'razorpay_order_id', 'razorpay_payment_id', 'payment_status',
+        'payment_gateway', 'cashfree_order_id', 'cashfree_payment_id',
+        'shiprocket_order_id',
+
+
     ];
 
     public function customer()
     {
-        return $this->belongsTo(Customer::class, 'customer_id');
+        return $this->belongsTo(Customer::class , 'customer_id');
     }
 
     public function items()
