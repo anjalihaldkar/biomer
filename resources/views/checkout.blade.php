@@ -3,6 +3,21 @@
 
 @section('content')
 <style>
+/* ── Payment Method Selector ── */
+.pay-methods { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
+.pay-method-label {
+    flex: 1; display: flex; align-items: center; gap: 0.6rem;
+    border: 2px solid #d4e8d0; border-radius: 10px;
+    padding: 0.75rem 1rem; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-size: 0.9rem; font-weight: 600; color: #1a2e1a;
+}
+.pay-method-label:has(input:checked) {
+    border-color: #2d7a45; background: #e8f5ed;
+}
+.pay-method-label input { display: none; }
+.pay-method-label img { height: 22px; object-fit: contain; }
+
 /* ═══════════════════════════════════════════
    CHECKOUT PAGE
 ═══════════════════════════════════════════ */
@@ -446,13 +461,38 @@
                         </div>
                     </div>
 
-                    <button type="button" class="chk__place-btn" id="placeOrderBtn" onclick="startPayment()">
-                        💳 Pay Now →
-                    </button>
+                   {{-- Payment Method Selector --}}
+<div class="chk__form-card-title" style="margin-top:1.25rem;">
+    <span class="chk__form-card-num">💳</span> Choose Payment Method
+</div>
+<div class="pay-methods">
+    <label class="pay-method-label">
+        <input type="radio" name="payment_method" value="razorpay" checked>
+        <img src="https://razorpay.com/assets/razorpay-logo-white-reverse.svg"
+             onerror="this.style.display='none'"
+             style="filter:invert(1) sepia(1) saturate(5) hue-rotate(100deg)">
+        Razorpay
+    </label>
+    <label class="pay-method-label">
+        <input type="radio" name="payment_method" value="cashfree">
+        <img src="https://cashfreelogo.cashfree.com/cashfreepayments/logosvgs/Group_4355.svg"
+             onerror="this.style.display='none'">
+        Cashfree
+    </label>
+    <label class="pay-method-label">
+        <input type="radio" name="payment_method" value="cod">
+        💵 Cash on Delivery
+    </label>
+</div>
 
-                    <p style="text-align:center; font-size:0.72rem; color:#9aab9a; margin-top:0.75rem; margin-bottom:0;">
-                        🔒 Your information is secure and encrypted
-                    </p>
+<button type="button" class="chk__place-btn" id="placeOrderBtn" onclick="startPayment()">
+    💳 Pay Now →
+</button>
+
+<p style="text-align:center; font-size:0.72rem; color:#9aab9a; margin-top:0.75rem; margin-bottom:0;">
+    🔒 Your information is secure and encrypted
+</p>
+
                 </div>
             </div>
 
@@ -463,27 +503,40 @@
 </section>
 
 @endsection
-
 @push('scripts')
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 <script>
+const cashfree = Cashfree({ mode: "sandbox" }); // 🔁 change to "production" for live
+
+function getSelectedGateway() {
+    return document.querySelector('input[name="payment_method"]:checked')?.value || 'razorpay';
+}
+
 function startPayment() {
     const btn  = document.getElementById('placeOrderBtn');
     const form = document.getElementById('checkoutForm');
 
-    // Basic HTML5 validation
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
     btn.disabled    = true;
     btn.textContent = 'Processing...';
 
-    // Collect form data
+    const gateway = getSelectedGateway();
+
+    if (gateway === 'cod') {
+        startCodPayment(btn, form);
+    } else if (gateway === 'cashfree') {
+        startCashfreePayment(btn, form);
+    } else {
+        startRazorpayPayment(btn, form);
+    }
+}
+
+// ── RAZORPAY ──────────────────────────────────────────────────────────
+function startRazorpayPayment(btn, form) {
     const formData = new FormData(form);
 
-    // Step 1: Create Razorpay order on server
     fetch('{{ route("order.razorpay") }}', {
         method: 'POST',
         headers: {
@@ -494,29 +547,19 @@ function startPayment() {
     })
     .then(res => res.json().then(data => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
-        if (!ok) {
-            throw new Error(data.error || data.message || 'Something went wrong.');
-        }
+        if (!ok) throw new Error(data.error || data.message || 'Something went wrong.');
 
-        // Step 2: Open Razorpay payment modal
         const options = {
-            key:       data.key_id,
-            amount:    data.amount,
-            currency:  data.currency,
-            name:      'Bharat Biomer',
+            key:         data.key_id,
+            amount:      data.amount,
+            currency:    data.currency,
+            name:        'Bharat Biomer',
             description: 'Order Payment',
-            order_id:  data.razorpay_order_id,
-            prefill: {
-                name:    data.name,
-                email:   data.email,
-                contact: data.phone,
-            },
-            theme: { color: '#2d7a45' },
-
-            // Step 3: On successful payment
+            order_id:    data.razorpay_order_id,
+            prefill:     { name: data.name, email: data.email, contact: data.phone },
+            theme:       { color: '#2d7a45' },
             handler: function (response) {
                 btn.textContent = 'Verifying Payment...';
-
                 fetch('{{ route("order.payment.success") }}', {
                     method: 'POST',
                     headers: {
@@ -532,41 +575,83 @@ function startPayment() {
                 })
                 .then(res => res.json().then(data => ({ ok: res.ok, data })))
                 .then(({ ok, data }) => {
-                    if (ok && data.redirect_url) {
-                        window.location.href = data.redirect_url;
-                    } else {
-                        throw new Error(data.error || 'Payment verification failed.');
-                    }
+                    if (ok && data.redirect_url) window.location.href = data.redirect_url;
+                    else throw new Error(data.error || 'Payment verification failed.');
                 })
-                .catch(err => {
-                    alert('❌ ' + err.message);
-                    btn.disabled    = false;
-                    btn.textContent = '💳 Pay Now →';
-                });
+                .catch(err => { alert('❌ ' + err.message); resetBtn(btn); });
             },
-
-            // Step 4: On modal closed / payment failed
-            modal: {
-                ondismiss: function () {
-                    btn.disabled    = false;
-                    btn.textContent = '💳 Pay Now →';
-                }
-            }
+            modal: { ondismiss: () => resetBtn(btn) }
         };
 
         const rzp = new Razorpay(options);
-        rzp.on('payment.failed', function (response) {
-            alert('❌ Payment failed: ' + response.error.description);
-            btn.disabled    = false;
-            btn.textContent = '💳 Pay Now →';
-        });
+        rzp.on('payment.failed', r => { alert('❌ Payment failed: ' + r.error.description); resetBtn(btn); });
         rzp.open();
     })
-    .catch(err => {
-        alert('❌ ' + err.message);
-        btn.disabled    = false;
-        btn.textContent = '💳 Pay Now →';
-    });
+    .catch(err => { alert('❌ ' + err.message); resetBtn(btn); });
+}
+
+// ── CASHFREE ──────────────────────────────────────────────────────────
+function startCashfreePayment(btn, form) {
+    const formData = new FormData(form);
+
+    fetch('{{ route("order.cashfree") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+        body: formData,
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Something went wrong.');
+
+        btn.textContent = 'Opening Payment...';
+
+        cashfree.checkout({
+            paymentSessionId: data.payment_session_id,
+            redirectTarget:   "_self",   // opens in same tab; Cashfree redirects back to return_url
+        });
+    })
+    .catch(err => { alert('❌ ' + err.message); resetBtn(btn); });
+}
+
+// ── COD ───────────────────────────────────────────────────────────────
+function startCodPayment(btn, form) {
+    if (!confirm('Place order with Cash on Delivery? You will pay when the order is delivered.')) {
+        resetBtn(btn);
+        return;
+    }
+
+    const formData = new FormData(form);
+
+    fetch('{{ route("order.cod") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+        body: formData,
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+        if (ok && data.redirect_url) {
+            window.location.href = data.redirect_url;
+        } else {
+            let msg = data.error || data.message || 'Something went wrong.';
+            if (data.errors) {
+                // Combine all Laravel validation errors into one string
+                msg = Object.values(data.errors).flat().join('\n');
+            }
+            throw new Error(msg);
+        }
+    })
+    .catch(err => { alert('❌ ' + err.message); resetBtn(btn); });
+}
+
+function resetBtn(btn) {
+    btn.disabled    = false;
+    btn.textContent = '💳 Pay Now →';
 }
 </script>
 @endpush
