@@ -349,6 +349,17 @@ Route::middleware(['auth'])->group(function () {
                 ]);
                 Route::get('tags-search', [TagController::class , 'search'])->name('dashboard.tags.search');
                 Route::post('tags/bulk-store', [TagController::class , 'bulkStore'])->name('dashboard.tags.bulkStore');
+
+                // Coupons
+                Route::resource('coupons', \App\Http\Controllers\CouponController::class)->names([
+                    'index' => 'dashboard.coupons.index',
+                    'create' => 'dashboard.coupons.create',
+                    'store' => 'dashboard.coupons.store',
+                    'show' => 'dashboard.coupons.show',
+                    'edit' => 'dashboard.coupons.edit',
+                    'update' => 'dashboard.coupons.update',
+                    'destroy' => 'dashboard.coupons.destroy',
+                ]);
             }
             );
         });
