@@ -31,7 +31,9 @@ class Product extends Model
     public function category()   { return $this->belongsTo(Category::class); }
     public function tags()       { return $this->belongsToMany(Tag::class, 'product_tag'); }
     public function images()     { return $this->hasMany(ProductImage::class)->orderBy('sort_order'); }
-    public function variations() { return $this->hasMany(ProductVariation::class); }
+    public function variations()      { return $this->hasMany(ProductVariation::class); }
+    public function reviews()           { return $this->hasMany(ProductReview::class); }
+    public function approvedReviews()   { return $this->hasMany(ProductReview::class)->where('status', 'approved'); }
 
     // ── Stock Helpers ──────────────────────────────────────
     public function isInStock(): bool
@@ -75,5 +77,15 @@ class Product extends Model
         return $min === $max
             ? '₹' . number_format($min, 2)
             : '₹' . number_format($min, 2) . ' – ₹' . number_format($max, 2);
+    }
+
+    public function getAvgRatingAttribute(): float
+    {
+        return round($this->approvedReviews()->avg('rating') ?? 0, 1);
+    }
+
+    public function getReviewCountAttribute(): int
+    {
+        return $this->approvedReviews()->count();
     }
 }
