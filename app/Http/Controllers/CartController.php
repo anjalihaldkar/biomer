@@ -13,7 +13,76 @@ class CartController extends Controller
     {
         $cart  = session()->get('cart', []);
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
-        return view('cart', compact('cart', 'total'));
+        
+        $discount = 0;
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+        }
+        
+        $finalTotal = max(0, $total - $discount);
+
+        return view('cart', compact('cart', 'total', 'discount', 'coupon', 'finalTotal'));
+    }
+
+    public function applyCoupon(Request $request)
+    {
+        $request->validate(['code' => 'required|string']);
+        $cart = session()->get('cart', []);
+        
+        if (empty($cart)) {
+            return response()->json(['success' => false, 'message' => 'Cart is empty.']);
+        }
+
+        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+
+        $coupon = \App\Models\Coupon::where('code', $request->code)->where('is_active', true)->first();
+
+        if (!$coupon) {
+            return response()->json(['success' => false, 'message' => 'Invalid or inactive coupon.']);
+        }
+
+        if ($coupon->expires_at && \Carbon\Carbon::parse($coupon->expires_at)->isPast()) {
+            return response()->json(['success' => false, 'message' => 'This coupon has expired.']);
+        }
+
+        if ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
+            return response()->json(['success' => false, 'message' => 'This coupon usage limit has been reached.']);
+        }
+
+        if ($total < $coupon->min_order_amount) {
+            return response()->json(['success' => false, 'message' => 'Minimum order amount for this coupon is ₹' . number_format($coupon->min_order_amount, 2)]);
+        }
+
+        $discount = $coupon->type === 'percent' ? ($total * ($coupon->value / 100)) : $coupon->value;
+
+        session()->put('coupon', [
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'value' => $coupon->value,
+            'discount' => $discount
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon applied successfully!',
+            'discount' => '₹' . number_format($discount, 2),
+            'final_total' => '₹' . number_format(max(0, $total - $discount), 2)
+        ]);
+    }
+
+    public function removeCoupon(Request $request)
+    {
+        session()->forget('coupon');
+        
+        $cart = session()->get('cart', []);
+        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon removed.',
+            'original_total' => '₹' . number_format($total, 2)
+        ]);
     }
 
     public function add(Request $request)

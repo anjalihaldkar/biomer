@@ -377,14 +377,84 @@ class ProductController extends Controller
     }
 
     // ── Frontend: Product Listing ──────────────────────────────────────────
-public function shopIndex()
+public function shopIndex(Request $request)
 {
-    $products = Product::with(['brand', 'category', 'variations'])
-        ->where('status', 'active')
-        ->latest()
-        ->paginate(12);
+    $query = Product::with(['brand', 'category', 'variations'])
+        ->where('status', 'active');
 
-    return view('product', compact('products'));
+    // Search functionality
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('short_description', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+
+    // Category filter
+    if ($request->filled('category')) {
+        $query->where('category_id', $request->category);
+    }
+
+    // Brand filter
+    if ($request->filled('brand')) {
+        $query->where('brand_id', $request->brand);
+    }
+
+    // Price range filter
+    if ($request->filled('min_price') || $request->filled('max_price')) {
+        $query->where(function ($q) use ($request) {
+            $q->where(function ($subQ) use ($request) {
+                // Products with variations - check variation prices
+                $subQ->whereHas('variations', function ($vq) use ($request) {
+                    if ($request->filled('min_price')) {
+                        $vq->where('price', '>=', $request->min_price);
+                    }
+                    if ($request->filled('max_price')) {
+                        $vq->where('price', '<=', $request->max_price);
+                    }
+                });
+            })->orWhere(function ($subQ) use ($request) {
+                // Products without variations - check base price
+                $subQ->whereDoesntHave('variations')
+                     ->where(function ($priceQ) use ($request) {
+                         if ($request->filled('min_price')) {
+                             $priceQ->where('base_price', '>=', $request->min_price);
+                         }
+                         if ($request->filled('max_price')) {
+                             $priceQ->where('base_price', '<=', $request->max_price);
+                         }
+                     });
+            });
+        });
+    }
+
+    // Sorting
+    $sortBy = $request->get('sort', 'latest');
+    switch ($sortBy) {
+        case 'price_low':
+            $query->orderByRaw('(SELECT MIN(price) FROM product_variations WHERE product_variations.product_id = products.id) ASC, base_price ASC');
+            break;
+        case 'price_high':
+            $query->orderByRaw('(SELECT MAX(price) FROM product_variations WHERE product_variations.product_id = products.id) DESC, base_price DESC');
+            break;
+        case 'name':
+            $query->orderBy('name');
+            break;
+        case 'latest':
+        default:
+            $query->latest();
+            break;
+    }
+
+    $products = $query->paginate(12)->withQueryString();
+
+    // Get filter options
+    $categories = \App\Models\Category::orderBy('name')->get();
+    $brands = \App\Models\Brand::orderBy('name')->get();
+
+    return view('product', compact('products', 'categories', 'brands'));
 }
 
 // ── Frontend: Product Detail ───────────────────────────────────────────
@@ -400,6 +470,9 @@ public function shopShow(Product $product)
         'images',
         'variations' => function ($q) {
             $q->where('is_active', true)->orderBy('price');
+        },
+        'reviews' => function ($q) {
+            $q->with('customer')->where('status', 'approved')->latest();
         }
     ]);
 
