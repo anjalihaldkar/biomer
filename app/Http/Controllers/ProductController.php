@@ -400,6 +400,9 @@ public function shopShow(Product $product)
         'images',
         'variations' => function ($q) {
             $q->where('is_active', true)->orderBy('price');
+        },
+        'reviews' => function ($q) {
+            $q->with('customer')->where('status', 'approved')->latest();
         }
     ]);
 

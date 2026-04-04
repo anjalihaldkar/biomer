@@ -427,9 +427,24 @@
                         <span>Tax (GST)</span>
                         <span>Included</span>
                     </div>
+
+                    <div class="cart__summary-row" id="discountRow" style="{{ $discount > 0 ? '' : 'display: none;' }}">
+                        <span>Discount <span id="couponCodeBadge" class="cart__product-variant" style="font-size:0.7rem;">{{ $coupon['code'] ?? '' }}</span></span>
+                        <span id="summaryDiscount" style="color:#c0392b;">-₹{{ number_format($discount ?? 0, 2) }} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a></span>
+                    </div>
+
                     <div class="cart__summary-row total">
                         <span>Total</span>
-                        <span id="summaryTotal">₹{{ number_format($total, 2) }}</span>
+                        <span id="summaryTotal">₹{{ number_format($finalTotal ?? $total, 2) }}</span>
+                    </div>
+
+                    {{-- Coupon Input --}}
+                    <div class="mb-4" id="couponFormWrapper" style="{{ $discount > 0 ? 'display: none;' : '' }}">
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1a2e1a; margin-bottom: 0.3rem;">Have a coupon?</label>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="couponCode" class="form-control" placeholder="Enter code" style="border: 1.5px solid #e8f0e4; border-radius: 8px; font-size: 0.9rem; flex:1;">
+                            <button type="button" class="btn btn-dark" onclick="applyCoupon()" style="background:#1a2e1a; border:none; border-radius:8px; font-weight:600; font-size:0.9rem;">Apply</button>
+                        </div>
                     </div>
 
                     {{-- Checkout Button --}}
@@ -618,6 +633,63 @@ function removeItem(key, index) {
         row.classList.remove('cart__row-updating');
         showToast('Network error. Try again.', 'error');
     });
+}
+
+// ════════════════════════════════════════════════
+//  APPLY COUPON
+// ════════════════════════════════════════════════
+function applyCoupon() {
+    const code = document.getElementById('couponCode').value.trim();
+    if(!code) return showToast('Please enter a coupon code.', 'error');
+    
+    fetch('{{ route("cart.coupon.apply") }}', {
+        method : 'POST',
+        headers: {
+            'Content-Type' : 'application/json',
+            'X-CSRF-TOKEN' : CSRF_TOKEN,
+            'Accept'       : 'application/json',
+        },
+        body: JSON.stringify({ code })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success) {
+            showToast(d.message, 'success');
+            document.getElementById('discountRow').style.display = 'flex';
+            document.getElementById('couponCodeBadge').textContent = code;
+            document.getElementById('summaryDiscount').innerHTML = `-${d.discount} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a>`;
+            document.getElementById('summaryTotal').textContent = d.final_total;
+            document.getElementById('couponFormWrapper').style.display = 'none';
+        } else {
+            showToast(d.message, 'error');
+        }
+    })
+    .catch(() => showToast('Network error.', 'error'));
+}
+
+// ════════════════════════════════════════════════
+//  REMOVE COUPON
+// ════════════════════════════════════════════════
+function removeCoupon() {
+    fetch('{{ route("cart.coupon.remove") }}', {
+        method : 'POST',
+        headers: {
+            'Content-Type' : 'application/json',
+            'X-CSRF-TOKEN' : CSRF_TOKEN,
+            'Accept'       : 'application/json',
+        }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success) {
+            showToast(d.message, 'success');
+            document.getElementById('discountRow').style.display = 'none';
+            document.getElementById('summaryTotal').textContent = d.original_total;
+            document.getElementById('couponFormWrapper').style.display = 'block';
+            document.getElementById('couponCode').value = '';
+        }
+    })
+    .catch(() => showToast('Network error.', 'error'));
 }
 </script>
 @endpush

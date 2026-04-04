@@ -1405,7 +1405,6 @@ font-family: var(--bb-font-display);
 
 .avan__section {
   background-color: #ffffff;
-  min-height: 856px;
   padding: 60px 0;
   display: flex;
   align-items: flex-start;

@@ -31,8 +31,15 @@ class OrderController extends Controller
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $discount = 0;
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+        }
+        $total = max(0, $total - $discount);
+
         $customer = $this->customer();
-        return view('checkout', compact('cart', 'total', 'customer'));
+        return view('checkout', compact('cart', 'total', 'discount', 'coupon', 'customer'));
     }
 
     // ── Shared: Validate & Check Stock ────────────────────────────────
@@ -173,6 +180,11 @@ class OrderController extends Controller
             return response()->json($stockError, 422);
 
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+            $total = max(0, $total - $discount);
+        }
 
         $api = new Api(config('razorpay.key_id'), config('razorpay.key_secret'));
         $razorpayOrder = $api->order->create([
@@ -226,6 +238,11 @@ class OrderController extends Controller
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+            $total = max(0, $total - $discount);
+        }
 
         $orderNumber = $this->createOrderInDB($checkoutData, $cart, $total, 'razorpay', [
             'razorpay_order_id' => $request->razorpay_order_id,
@@ -249,6 +266,11 @@ class OrderController extends Controller
             return response()->json($stockError, 422);
 
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+            $total = max(0, $total - $discount);
+        }
         $customer = $this->customer();
         $orderId = 'BB-' . strtoupper(uniqid());
 
@@ -320,6 +342,11 @@ class OrderController extends Controller
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+            $total = max(0, $total - $discount);
+        }
 
         // Get payment ID from payments list
         $paymentsRes = Http::withHeaders([
@@ -356,6 +383,11 @@ class OrderController extends Controller
         $this->storeCheckoutSession($request);
 
         $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent' ? ($total * ($coupon['value'] / 100)) : $coupon['value'];
+            $total = max(0, $total - $discount);
+        }
 
         $orderNumber = $this->createOrderInDB(
             session()->get('checkout_data'),

@@ -29,6 +29,7 @@ use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CustomerDashboardController;
+use App\Http\Controllers\ProductReviewController;
 
 // ══════════════════════════════════════════════════════════════════════
 //  PUBLIC FRONTEND ROUTES
@@ -74,6 +75,8 @@ Route::post('/cart/add', [CartController::class , 'add'])->name('cart.add');
 Route::post('/cart/update', [CartController::class , 'update'])->name('cart.update');
 Route::post('/cart/remove', [CartController::class , 'remove'])->name('cart.remove');
 Route::get('/cart/clear', [CartController::class , 'clear'])->name('cart.clear');
+Route::post('/cart/coupon/apply', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
+Route::post('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
 
 // Customer checkout — customer login required
 Route::middleware('customer.auth')->group(function () {
@@ -95,6 +98,9 @@ Route::middleware('customer.auth')->group(function () {
     Route::post('/wishlist/toggle', [WishlistController::class , 'toggle'])->name('wishlist.toggle');
     Route::post('/wishlist/remove', [WishlistController::class , 'remove'])->name('wishlist.remove');
     Route::get('/customer/dashboard', [CustomerDashboardController::class , 'index'])->name('customer.dashboard');
+
+    // Product Reviews (customer submit)
+    Route::post('/products/{product}/reviews', [ProductReviewController::class, 'store'])->name('reviews.store');
 
 });
 
@@ -360,6 +366,12 @@ Route::middleware(['auth'])->group(function () {
                     'update' => 'dashboard.coupons.update',
                     'destroy' => 'dashboard.coupons.destroy',
                 ]);
+
+                // Product Reviews (admin)
+                Route::get('reviews', [ProductReviewController::class, 'index'])->name('dashboard.reviews.index');
+                Route::post('reviews/{review}/approve', [ProductReviewController::class, 'approve'])->name('dashboard.reviews.approve');
+                Route::post('reviews/{review}/reject', [ProductReviewController::class, 'reject'])->name('dashboard.reviews.reject');
+                Route::delete('reviews/{review}', [ProductReviewController::class, 'destroy'])->name('dashboard.reviews.destroy');
             }
             );
         });

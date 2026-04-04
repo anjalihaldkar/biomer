@@ -333,7 +333,123 @@
     </div>
   </section>
 
+  <!-- ========================
+       SECTION 5: Reviews & Ratings
+  ======================== -->
+  @php
+    $approvedReviews = $product->approvedReviews()->with('customer')->latest()->get();
+    $avgRating       = $product->avg_rating;
+    $reviewCount     = $product->review_count;
+    $isLoggedIn      = Auth::guard('customer')->check();
+    $alreadyReviewed = $isLoggedIn
+        ? $product->reviews()->where('customer_id', Auth::guard('customer')->id())->exists()
+        : false;
+  @endphp
+
+  <section class="avan__section" style="padding-top:0;">
+    <div class="container">
+
+      <div class="avan__header">
+        <div class="avan__header-top">
+          <span class="avan__check">★</span>
+          <h3 class="avan__header-title">Customer Reviews</h3>
+        </div>
+      </div>
+
+      <div class="row g-4">
+
+        {{-- ── Left: Summary ── --}}
+        <div class="col-12 col-md-4">
+          <div class="rv__summary-card">
+            <div class="rv__avg-score">{{ number_format($avgRating, 1) }}</div>
+            <div class="rv__stars-row">
+              @for($i = 1; $i <= 5; $i++)
+                @if($i <= floor($avgRating))
+                  <i class="ri-star-fill rv__star rv__star--filled"></i>
+                @elseif($i - $avgRating < 1)
+                  <i class="ri-star-half-fill rv__star rv__star--filled"></i>
+                @else
+                  <i class="ri-star-line rv__star"></i>
+                @endif
+              @endfor
+            </div>
+            <p class="rv__total-label">{{ $reviewCount }} {{ Str::plural('review', $reviewCount) }}</p>
+
+            {{-- Rating bars --}}
+            @for($star = 5; $star >= 1; $star--)
+              @php $cnt = $product->approvedReviews()->where('rating', $star)->count(); @endphp
+              <div class="rv__bar-row">
+                <span class="rv__bar-label">{{ $star }} <i class="ri-star-fill rv__star rv__star--filled fs-10"></i></span>
+                <div class="rv__bar-track">
+                  <div class="rv__bar-fill" style="width:{{ $reviewCount > 0 ? round(($cnt/$reviewCount)*100) : 0 }}%"></div>
+                </div>
+                <span class="rv__bar-count">{{ $cnt }}</span>
+              </div>
+            @endfor
+          </div>
+        </div>
+
+        {{-- ── Right: Reviews list + form ── --}}
+        <div class="col-12 col-md-8">
+
+          {{-- Submit form --}}
+          @if($isLoggedIn && !$alreadyReviewed)
+          <div class="rv__form-card mb-4" id="reviewFormWrap">
+            <h5 class="rv__form-title">Write a Review</h5>
+            <div class="rv__star-picker mb-3" id="starPicker">
+              @for($i = 1; $i <= 5; $i++)
+                <i class="ri-star-line rv__pick-star" data-value="{{ $i }}" id="pickStar{{ $i }}"></i>
+              @endfor
+              <span class="rv__pick-label ms-2" id="starLabel">Select rating</span>
+            </div>
+            <textarea id="reviewText" class="rv__textarea form-control mb-3" rows="3"
+                      placeholder="Share your experience with this product (optional)…" maxlength="1000"></textarea>
+            <button class="pd__cta-btn pd__cta-btn--primary" id="submitReviewBtn" style="width:auto;padding:10px 28px;">
+              Submit Review
+            </button>
+            <div id="reviewMsg" class="mt-2 fw-medium" style="display:none;"></div>
+          </div>
+          @elseif($isLoggedIn && $alreadyReviewed)
+          <div class="rv__already-msg mb-4">
+            <i class="ri-checkbox-circle-fill text-success me-2"></i> You've already reviewed this product. Thank you!
+          </div>
+          @else
+          <div class="rv__login-prompt mb-4">
+            <i class="ri-lock-line me-1"></i>
+            <a href="{{ route('customer.login') }}" class="text-primary-600 fw-medium">Login</a> to write a review.
+          </div>
+          @endif
+
+          {{-- Reviews list --}}
+          @forelse($approvedReviews as $rev)
+          <div class="rv__item">
+            <div class="rv__item-header">
+              <div class="rv__avatar">{{ strtoupper(substr($rev->customer->name ?? 'U', 0, 1)) }}</div>
+              <div>
+                <p class="rv__name">{{ $rev->customer->name ?? 'Customer' }}</p>
+                <div class="d-flex align-items-center gap-1">
+                  @for($i = 1; $i <= 5; $i++)
+                    <i class="ri-star-{{ $i <= $rev->rating ? 'fill' : 'line' }} rv__star rv__star--sm {{ $i <= $rev->rating ? 'rv__star--filled' : '' }}"></i>
+                  @endfor
+                  <span class="rv__date ms-2">{{ $rev->created_at->diffForHumans() }}</span>
+                </div>
+              </div>
+            </div>
+            @if($rev->review_text)
+            <p class="rv__text">{{ $rev->review_text }}</p>
+            @endif
+          </div>
+          @empty
+          <p class="text-secondary-light">No reviews yet. Be the first to review this product!</p>
+          @endforelse
+
+        </div>
+      </div>
+    </div>
+  </section>
+
 @endsection
+
 
 @push('styles')
 <style>
@@ -478,6 +594,73 @@
     border: 2px solid #2d7a45;
   }
   .pd__cta-btn--outline:hover { background: #f4faf0; }
+
+  /* ── Reviews ─────────────────────────────────── */
+  .rv__summary-card {
+    background: #f4faf0;
+    border: 1px solid #c8e6c9;
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .rv__avg-score {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #2d7a45;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .rv__stars-row { display: flex; justify-content: center; gap: 3px; margin-bottom: 6px; }
+  .rv__star { font-size: 1.1rem; color: #d1d5db; }
+  .rv__star--filled { color: #f59e0b; }
+  .rv__star--sm { font-size: 0.85rem; }
+  .rv__total-label { font-size: 0.82rem; color: #6b7280; margin-bottom: 16px; }
+  .rv__bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .rv__bar-label { font-size: 0.78rem; color: #4b5563; width: 32px; text-align: right; white-space: nowrap; }
+  .rv__bar-track { flex: 1; height: 7px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+  .rv__bar-fill { height: 100%; background: #f59e0b; border-radius: 99px; transition: width .5s ease; }
+  .rv__bar-count { font-size: 0.75rem; color: #9ca3af; width: 16px; }
+
+  .rv__form-card {
+    background: #fff;
+    border: 1px solid #c8e6c9;
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .rv__form-title { color: #2d7a45; font-weight: 700; margin-bottom: 12px; font-size: 1rem; }
+  .rv__star-picker { display: flex; align-items: center; gap: 4px; }
+  .rv__pick-star { font-size: 1.8rem; color: #d1d5db; cursor: pointer; transition: color .15s, transform .15s; }
+  .rv__pick-star:hover, .rv__pick-star.active { color: #f59e0b; transform: scale(1.15); }
+  .rv__pick-label { font-size: 0.82rem; color: #6b7280; }
+  .rv__textarea { border: 1.5px solid #c8e6c9; border-radius: 10px; resize: vertical; font-size: 0.9rem; }
+  .rv__textarea:focus { border-color: #2d7a45; box-shadow: 0 0 0 3px rgba(45,122,69,.12); outline: none; }
+
+  .rv__item {
+    border-bottom: 1px solid #e8f0e4;
+    padding: 16px 0;
+  }
+  .rv__item:last-child { border-bottom: none; }
+  .rv__item-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .rv__avatar {
+    width: 42px; height: 42px;
+    background: #2d7a45;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700; flex-shrink: 0;
+  }
+  .rv__name { font-weight: 600; color: #1f2937; margin: 0 0 2px; font-size: 0.95rem; }
+  .rv__date { font-size: 0.75rem; color: #9ca3af; }
+  .rv__text { font-size: 0.9rem; color: #4b5563; margin: 0; line-height: 1.6; padding-left: 54px; }
+
+  .rv__login-prompt, .rv__already-msg {
+    background: #f4faf0;
+    border: 1px solid #c8e6c9;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    color: #374151;
+  }
 </style>
 @endpush
 
@@ -557,6 +740,81 @@
   const firstVar = document.querySelector('.pd__var-btn');
   if (firstVar) {
     document.getElementById('addToCartBtn').dataset.variationId = firstVar.dataset.id;
+  }
+
+  // ── Star Picker ──────────────────────────────────────────────────────
+  const pickStars = document.querySelectorAll('.rv__pick-star');
+  let selectedRating = 0;
+  const starLabels = ['','Terrible','Poor','Average','Good','Excellent'];
+
+  pickStars.forEach(star => {
+    star.addEventListener('mouseover', () => {
+      const val = parseInt(star.dataset.value);
+      pickStars.forEach(s => {
+        s.classList.toggle('active', parseInt(s.dataset.value) <= val);
+        s.classList.replace('ri-star-line','ri-star-fill');
+        if (parseInt(s.dataset.value) > val) s.classList.replace('ri-star-fill','ri-star-line');
+      });
+    });
+    star.addEventListener('mouseout', () => {
+      pickStars.forEach(s => {
+        const v = parseInt(s.dataset.value);
+        s.classList.toggle('active', v <= selectedRating);
+        s.classList.replace(v <= selectedRating ? 'ri-star-line' : 'ri-star-fill',
+                            v <= selectedRating ? 'ri-star-fill' : 'ri-star-line');
+      });
+    });
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.dataset.value);
+      document.getElementById('starLabel').textContent = starLabels[selectedRating];
+    });
+  });
+
+  // ── Submit review ────────────────────────────────────────────────────
+  const submitBtn = document.getElementById('submitReviewBtn');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function () {
+      if (!selectedRating) {
+        document.getElementById('starLabel').textContent = '⚠ Please select a rating!';
+        document.getElementById('starLabel').style.color = '#dc3545';
+        return;
+      }
+      const text    = document.getElementById('reviewText').value;
+      const msgEl   = document.getElementById('reviewMsg');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+
+      fetch('{{ route("reviews.store", $product) }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ rating: selectedRating, review_text: text })
+      })
+      .then(r => r.json())
+      .then(d => {
+        msgEl.style.display = 'block';
+        if (d.success) {
+          msgEl.style.color = '#2d7a45';
+          msgEl.textContent = d.message;
+          document.getElementById('reviewFormWrap').style.opacity = '0.6';
+          submitBtn.textContent = '✓ Submitted';
+        } else {
+          msgEl.style.color = '#dc3545';
+          msgEl.textContent = d.message;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Review';
+        }
+      })
+      .catch(() => {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#dc3545';
+        msgEl.textContent = 'Something went wrong. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Review';
+      });
+    });
   }
 </script>
 @endpush

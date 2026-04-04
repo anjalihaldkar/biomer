@@ -90,6 +90,23 @@
 
             <li class="dropdown">
                 <a href="javascript:void(0)">
+                    <iconify-icon icon="ri:star-half-line" class="menu-icon"></iconify-icon>
+                    <span>Reviews</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a href="{{ route('dashboard.reviews.index') }}"><i
+                                class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> All Reviews</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.reviews.index', ['status'=>'pending']) }}"><i
+                                class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Pending</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                <a href="javascript:void(0)">
                     <iconify-icon icon="solar:calculator-outline" class="menu-icon"></iconify-icon>
                     <span>Taxes (GST)</span>
                 </a>
