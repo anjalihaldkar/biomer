@@ -149,6 +149,183 @@
 .shop__btn--disabled { background: #f0f0f0; color: #aaa; cursor: not-allowed; }
   </style>
 
+  {{-- Additional Styles for Filters --}}
+  <style>
+  .shop__filters-card {
+    background: #fff;
+    border: 1px solid #e8f0e4;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .shop__search-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .shop__search-group {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .shop__search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9aab9a;
+    font-size: 1.1rem;
+  }
+
+  .shop__search-input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1.5px solid #c8e6c9;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+  }
+
+  .shop__search-input:focus {
+    outline: none;
+    border-color: #2d7a45;
+  }
+
+  .shop__search-btn, .shop__clear-btn, .shop__apply-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .shop__search-btn {
+    background: #2d7a45;
+    color: #fff;
+  }
+
+  .shop__search-btn:hover {
+    background: #245e36;
+  }
+
+  .shop__clear-btn {
+    background: #f0f0f0;
+    color: #666;
+  }
+
+  .shop__clear-btn:hover {
+    background: #e0e0e0;
+  }
+
+  .shop__filters-row {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+    flex-wrap: wrap;
+  }
+
+  .shop__filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 150px;
+  }
+
+  .shop__filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2d7a45;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .shop__filter-select, .shop__price-input {
+    padding: 8px 12px;
+    border: 1.5px solid #c8e6c9;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+  }
+
+  .shop__filter-select:focus, .shop__price-input:focus {
+    outline: none;
+    border-color: #2d7a45;
+  }
+
+  .shop__price-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .shop__price-input {
+    width: 80px;
+  }
+
+  .shop__price-separator {
+    color: #9aab9a;
+    font-weight: 600;
+  }
+
+  .shop__filter-actions {
+    margin-left: auto;
+  }
+
+  .shop__apply-btn {
+    background: #2d7a45;
+    color: #fff;
+    padding: 10px 20px;
+  }
+
+  .shop__apply-btn:hover {
+    background: #245e36;
+  }
+
+  .shop__results-info {
+    background: #e8f5ed;
+    border: 1px solid #a8d5b5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    color: #2d7a45;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .shop__search-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .shop__filters-row {
+      flex-direction: column;
+    }
+
+    .shop__filter-group {
+      width: 100%;
+    }
+
+    .shop__filter-actions {
+      margin-left: 0;
+      margin-top: 12px;
+    }
+  }
+  </style>
+
   <section class="prodh__section">
     <div class="container">
       <div class="row">
@@ -178,6 +355,101 @@
           </div>
         </div>
       </div>
+
+      {{-- Search and Filter Bar --}}
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="shop__filters-card">
+            <form method="GET" action="{{ route('products.index') }}" id="filterForm">
+
+              {{-- Search Bar --}}
+              <div class="shop__search-row">
+                <div class="shop__search-group">
+                  <i class="ri-search-line shop__search-icon"></i>
+                  <input type="text" name="search" value="{{ request('search') }}"
+                         class="shop__search-input" placeholder="Search products...">
+                </div>
+                <button type="submit" class="shop__search-btn">
+                  <i class="ri-search-line"></i> Search
+                </button>
+                <a href="{{ route('products.index') }}" class="shop__clear-btn">
+                  <i class="ri-close-line"></i> Clear
+                </a>
+              </div>
+
+              {{-- Filters Row --}}
+              <div class="shop__filters-row">
+                <div class="shop__filter-group">
+                  <label class="shop__filter-label">Category</label>
+                  <select name="category" class="shop__filter-select">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                      <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
+                        {{ $cat->name }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+
+                <div class="shop__filter-group">
+                  <label class="shop__filter-label">Brand</label>
+                  <select name="brand" class="shop__filter-select">
+                    <option value="">All Brands</option>
+                    @foreach($brands as $br)
+                      <option value="{{ $br->id }}" {{ request('brand') == $br->id ? 'selected' : '' }}>
+                        {{ $br->name }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+
+                <div class="shop__filter-group">
+                  <label class="shop__filter-label">Price Range</label>
+                  <div class="shop__price-range">
+                    <input type="number" name="min_price" value="{{ request('min_price') }}"
+                           class="shop__price-input" placeholder="Min ₹" min="0">
+                    <span class="shop__price-separator">-</span>
+                    <input type="number" name="max_price" value="{{ request('max_price') }}"
+                           class="shop__price-input" placeholder="Max ₹" min="0">
+                  </div>
+                </div>
+
+                <div class="shop__filter-group">
+                  <label class="shop__filter-label">Sort By</label>
+                  <select name="sort" class="shop__filter-select">
+                    <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Latest</option>
+                    <option value="name" {{ request('sort') == 'name' ? 'selected' : '' }}>Name A-Z</option>
+                    <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Price: Low to High</option>
+                    <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Price: High to Low</option>
+                  </select>
+                </div>
+
+                <div class="shop__filter-actions">
+                  <button type="submit" class="shop__apply-btn">
+                    <i class="ri-filter-line"></i> Apply Filters
+                  </button>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {{-- Results Info --}}
+      @if(request()->hasAny(['search', 'category', 'brand', 'min_price', 'max_price']))
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="shop__results-info">
+              <i class="ri-information-line"></i>
+              Showing {{ $products->count() }} of {{ $products->total() }} products
+              @if(request('search'))
+                for "<strong>{{ request('search') }}</strong>"
+              @endif
+            </div>
+          </div>
+        </div>
+      @endif
 
       <div class="row g-4">
 
@@ -424,6 +696,37 @@
       })
       .catch(() => alert('Could not update wishlist. Please try again.'));
     });
+  });
+
+  // ── Filter Enhancements ──────────────────────────────────────────────
+  // Auto-submit on select change for better UX
+  document.querySelectorAll('.shop__filter-select').forEach(select => {
+    select.addEventListener('change', () => {
+      document.getElementById('filterForm').submit();
+    });
+  });
+
+  // Clear filters functionality
+  document.querySelector('.shop__clear-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    // Reset all form fields
+    document.querySelectorAll('#filterForm input, #filterForm select').forEach(field => {
+      if (field.type === 'number') {
+        field.value = '';
+      } else {
+        field.selectedIndex = 0;
+      }
+    });
+    // Submit the form to clear filters
+    document.getElementById('filterForm').submit();
+  });
+
+  // Search on Enter key
+  document.querySelector('.shop__search-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('filterForm').submit();
+    }
   });
 </script>
 @endpush
