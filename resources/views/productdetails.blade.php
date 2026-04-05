@@ -104,6 +104,13 @@
                       @endif
                     </div>
                   </div>
+                  <div class="pd__shipping-note" style="margin-top:0.8rem; font-size:0.9rem; color:#2d7a45;">
+                      @if($product->shipping_charge > 0)
+                          Shipping: ₹{{ number_format($product->shipping_charge, 2) }} per unit
+                      @else
+                          Free shipping available
+                      @endif
+                  </div>
 
                   {{-- ── Variation Selector ── --}}
                   @if($product->variations->count())

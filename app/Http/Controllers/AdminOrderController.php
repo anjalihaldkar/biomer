@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderStatusUpdate;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminOrderController extends Controller
 {
@@ -62,7 +65,19 @@ class AdminOrderController extends Controller
         ]);
 
         $order = Order::where('order_number', $orderNumber)->firstOrFail();
-        $order->update(['status' => $request->status]);
+        $oldStatus = $order->status;
+        $newStatus = $request->status;
+
+        $order->update(['status' => $newStatus]);
+
+        // Send status update email if status actually changed
+        if ($oldStatus !== $newStatus) {
+            try {
+                Mail::to($order->email)->send(new OrderStatusUpdate($order, $oldStatus, $newStatus));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order status update email: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,

@@ -417,11 +417,17 @@
 
                     <div class="cart__summary-row">
                         <span>Items (<span id="summaryItemCount">{{ collect($cart)->sum('quantity') }}</span>)</span>
-                        <span id="summarySubtotal">₹{{ number_format($total, 2) }}</span>
+                        <span id="summarySubtotal">₹{{ number_format($subtotal, 2) }}</span>
                     </div>
                     <div class="cart__summary-row">
                         <span>Shipping</span>
-                        <span style="color:#2d7a45; font-weight:700;">Free</span>
+                        <span id="summaryShipping" style="color:#2d7a45; font-weight:700;">
+                            @if($shippingTotal > 0)
+                                ₹{{ number_format($shippingTotal, 2) }}
+                            @else
+                                Free
+                            @endif
+                        </span>
                     </div>
                     <div class="cart__summary-row">
                         <span>Tax (GST)</span>
@@ -519,6 +525,10 @@
 <script>
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
+function formatShipping(amount) {
+    return amount === '₹0.00' ? 'Free' : amount;
+}
+
 // ════════════════════════════════════════════════
 //  TOAST
 // ════════════════════════════════════════════════
@@ -575,8 +585,9 @@ function sendQtyUpdate(key, index, quantity) {
             // Update item total
             document.getElementById('itemTotal_' + index).textContent = d.item_total;
             // Update summary
-            document.getElementById('summarySubtotal').textContent = d.cart_total;
-            document.getElementById('summaryTotal').textContent    = d.cart_total;
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTotal').textContent    = d.final_total;
             document.getElementById('summaryItemCount').textContent = d.cart_count;
             document.getElementById('cartCountBadge').textContent   = d.cart_count + ' item(s)';
             showToast('Quantity updated!', 'success');
@@ -616,8 +627,9 @@ function removeItem(key, index) {
             setTimeout(() => {
                 row.remove();
                 // Update summary
-                document.getElementById('summarySubtotal').textContent = d.cart_total;
-                document.getElementById('summaryTotal').textContent    = d.cart_total;
+                document.getElementById('summarySubtotal').textContent = d.subtotal;
+                document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+                document.getElementById('summaryTotal').textContent    = d.final_total;
                 document.getElementById('summaryItemCount').textContent = d.cart_count;
                 document.getElementById('cartCountBadge').textContent  = d.cart_count + ' item(s)';
                 showToast('Item removed from cart.', 'success');
@@ -658,6 +670,8 @@ function applyCoupon() {
             document.getElementById('discountRow').style.display = 'flex';
             document.getElementById('couponCodeBadge').textContent = code;
             document.getElementById('summaryDiscount').innerHTML = `-${d.discount} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a>`;
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
             document.getElementById('summaryTotal').textContent = d.final_total;
             document.getElementById('couponFormWrapper').style.display = 'none';
         } else {
@@ -684,7 +698,9 @@ function removeCoupon() {
         if(d.success) {
             showToast(d.message, 'success');
             document.getElementById('discountRow').style.display = 'none';
-            document.getElementById('summaryTotal').textContent = d.original_total;
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTotal').textContent = d.final_total;
             document.getElementById('couponFormWrapper').style.display = 'block';
             document.getElementById('couponCode').value = '';
         }

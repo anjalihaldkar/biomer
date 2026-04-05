@@ -10,12 +10,15 @@ class Product extends Model
     protected $fillable = [
         'name', 'slug', 'sku', 'brand_id', 'category_id',
         'technical_content', 'description', 'short_description',
-        'base_price', 'stock_quantity', 'manage_stock', 'status',
+        'base_price', 'shipping_charge', 'tax_rate', 'gst_rate', 'stock_quantity', 'manage_stock', 'status',
         'featured_image', 'video_url', 'meta_title', 'meta_description',
     ];
 
     protected $casts = [
         'base_price'     => 'decimal:2',
+        'shipping_charge'=> 'decimal:2',
+        'tax_rate'       => 'decimal:2',
+        'gst_rate'       => 'decimal:2',
         'manage_stock'   => 'boolean',
         'stock_quantity' => 'integer',
     ];

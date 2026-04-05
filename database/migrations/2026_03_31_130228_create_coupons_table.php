@@ -11,15 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('coupons', function (Blueprint $table) {
-            $table->id();
-            $table->string('code')->unique();
-            $table->enum('type', ['fixed', 'percent'])->default('fixed');
-            $table->decimal('value', 8, 2);
-            $table->decimal('min_order_amount', 10, 2)->default(0);
-            $table->boolean('status')->default(true);
-            $table->timestamps();
-        });
+        // Check if table already exists (from previous setup)
+        if (!Schema::hasTable('coupons')) {
+            Schema::create('coupons', function (Blueprint $table) {
+                $table->id();
+                $table->string('code')->unique();
+                $table->enum('type', ['fixed', 'percent'])->default('fixed');
+                $table->decimal('value', 8, 2);
+                $table->decimal('min_order_amount', 10, 2)->default(0);
+                $table->boolean('status')->default(true);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

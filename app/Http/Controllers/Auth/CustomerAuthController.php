@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\CustomerWelcome;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class CustomerAuthController extends Controller
 {
@@ -79,6 +81,14 @@ class CustomerAuthController extends Controller
             'phone'    => $request->phone,
             'password' => Hash::make($request->password),
         ]);
+
+        // Send welcome email
+        try {
+            Mail::to($customer->email)->send(new CustomerWelcome($customer));
+        } catch (\Exception $e) {
+            // Log email error but don't fail registration
+            \Log::error('Failed to send welcome email: ' . $e->getMessage());
+        }
 
         Auth::guard('customer')->login($customer);
 

@@ -498,6 +498,26 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted d-block mt-1">Each variation has its own price set above.</small>
+
+                            <label class="form-label mt-3">Shipping Charge (₹)</label>
+                            <input type="number" name="shipping_charge"
+                                class="form-control @error('shipping_charge') is-invalid @enderror"
+                                value="{{ old('shipping_charge', $product->shipping_charge ?? 0) }}"
+                                min="0" step="0.01" placeholder="0.00">
+                            @error('shipping_charge')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">Leave as 0 for free shipping, or enter the shipping charge amount.</small>
+
+                            <label class="form-label mt-3">Tax Rate (%) (GST/VAT)</label>
+                            <input type="number" name="tax_rate"
+                                class="form-control @error('tax_rate') is-invalid @enderror"
+                                value="{{ old('tax_rate', $product->tax_rate ?? 0) }}"
+                                min="0" max="100" step="0.01" placeholder="0.00">
+                            @error('tax_rate')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">e.g., 5% GST, 18% VAT. Leave as 0 for no tax.</small>
                         </div>
                     </div>
 
