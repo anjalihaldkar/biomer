@@ -12,7 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->decimal('gst_rate', 5, 2)->default(0);
+            // Only add if it doesn't exist
+            if (!Schema::hasColumn('products', 'gst_rate')) {
+                $table->decimal('gst_rate', 5, 2)->default(0);
+            }
+            if (!Schema::hasColumn('products', 'tax_rate')) {
+                $table->decimal('tax_rate', 5, 2)->default(0)->after('gst_rate');
+            }
         });
     }
 

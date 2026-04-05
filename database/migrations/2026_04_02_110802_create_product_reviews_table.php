@@ -11,15 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_reviews', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
-            $table->integer('rating')->default(5);
-            $table->text('review_text')->nullable();
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->timestamps();
-        });
+        // This migration is superseded by 2026_04_04_000000_create_product_reviews_table.php
+        // Do nothing - the actual table creation happens in the later migration
     }
 
     /**
@@ -27,6 +20,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_reviews');
+        // Do nothing - don't drop anything since we didn't create it
     }
 };

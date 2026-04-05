@@ -152,8 +152,8 @@
             @endforeach
 
             <div style="margin-top:1rem;">
-                <div class="od__total-row"><span>Subtotal</span><span>₹{{ number_format($order->total_amount, 2) }}</span></div>
-                <div class="od__total-row"><span>Shipping</span><span style="color:#2d7a45; font-weight:700;">Free</span></div>
+                <div class="od__total-row"><span>Subtotal</span><span>₹{{ number_format($order->total_amount - $order->shipping_amount, 2) }}</span></div>
+                <div class="od__total-row"><span>Shipping</span><span style="color:#2d7a45; font-weight:700;">@if($order->shipping_amount > 0)₹{{ number_format($order->shipping_amount, 2) }}@else Free @endif</span></div>
                 <div class="od__total-row"><span>Tax (GST)</span><span>Included</span></div>
                 <div class="od__total-row grand"><span>Total</span><span>₹{{ number_format($order->total_amount, 2) }}</span></div>
             </div>

@@ -76,6 +76,30 @@
                 </div>
               </div>
 
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Shipping Charge</label>
+                <div class="input-group">
+                  <span class="input-group-text">₹</span>
+                  <input type="number" name="shipping_charge" step="0.01" min="0"
+                         class="form-control @error('shipping_charge') is-invalid @enderror"
+                         value="{{ old('shipping_charge', $product->shipping_charge ?? 0) }}">
+                  @error('shipping_charge')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <small class="text-muted d-block mt-1">0 = Free shipping</small>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tax Rate (%)</label>
+                <div class="input-group">
+                  <input type="number" name="tax_rate" step="0.01" min="0" max="100"
+                         class="form-control @error('tax_rate') is-invalid @enderror"
+                         value="{{ old('tax_rate', $product->tax_rate ?? 0) }}">
+                  <span class="input-group-text">%</span>
+                  @error('tax_rate')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <small class="text-muted d-block mt-1">GST/VAT rate (0 = no tax)</small>
+              </div>
+
               <div class="col-12">
                 <label class="form-label fw-semibold">Technical Content</label>
                 <input type="text" name="technical_content"

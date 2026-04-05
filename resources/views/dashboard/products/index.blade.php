@@ -10,7 +10,7 @@
                         scrollX: false,
                         autoWidth: false,
                         columnDefs: [
-                            { orderable: false, targets: [0, 1, 6, 9] }
+                            { orderable: false, targets: [0, 1, 7, 10] }
                         ]
                     });
 
@@ -59,6 +59,7 @@
                         <th scope="col">Brand</th>
                         <th scope="col">Category</th>
                         <th scope="col">Price</th>
+                        <th scope="col">Shipping</th>
                         <th scope="col">Variations</th>
                         <th scope="col">Status</th>
                         <th scope="col">Created</th>
@@ -107,6 +108,15 @@
 
                         {{-- Price --}}
                         <td>₹{{ number_format($product->base_price, 2) }}</td>
+
+                        {{-- Shipping --}}
+                        <td>
+                            @if($product->shipping_charge > 0)
+                                <span class="badge bg-info">₹{{ number_format($product->shipping_charge, 2) }}</span>
+                            @else
+                                <span class="badge bg-success">Free</span>
+                            @endif
+                        </td>
 
                         {{-- Variations --}}
                         <td>

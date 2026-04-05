@@ -445,11 +445,17 @@
                     <div style="margin-top:1rem;">
                         <div class="chk__total-row">
                             <span>Subtotal</span>
-                            <span>₹{{ number_format($total, 2) }}</span>
+                            <span>₹{{ number_format($subtotal, 2) }}</span>
                         </div>
                         <div class="chk__total-row">
                             <span>Shipping</span>
-                            <span style="color:#2d7a45; font-weight:700;">Free</span>
+                            <span style="color:#2d7a45; font-weight:700;">
+                                @if($shippingTotal > 0)
+                                    ₹{{ number_format($shippingTotal, 2) }}
+                                @else
+                                    Free
+                                @endif
+                            </span>
                         </div>
                         <div class="chk__total-row">
                             <span>Tax (GST)</span>
