@@ -24,12 +24,14 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\Auth\CustomerAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderReturnController;
 use App\Http\Controllers\AdminCustomerController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\ProductReviewController;
+use App\Http\Controllers\Admin\PageController;
 
 // ══════════════════════════════════════════════════════════════════════
 //  PUBLIC FRONTEND ROUTES
@@ -61,12 +63,18 @@ Route::prefix('authentication')->controller(AuthenticationController::class)->gr
 //  CUSTOMER AUTH ROUTES — public
 // ══════════════════════════════════════════════════════════════════════
 
+// Default login route (alias for Laravel's authentication redirects)
+Route::get('/login', [CustomerAuthController::class , 'showLogin'])->name('login')->middleware('guest:customer');
+
 Route::middleware('guest:customer')->group(function () {
-    Route::get('/login', [CustomerAuthController::class , 'showLogin'])->name('customer.login');
     Route::post('/login', [CustomerAuthController::class , 'login'])->name('customer.login.post');
     Route::get('/register', [CustomerAuthController::class , 'showRegister'])->name('customer.register');
     Route::post('/register', [CustomerAuthController::class , 'register'])->name('customer.register.post');
 });
+
+// Alias for customer.login
+Route::get('/customer/login', [CustomerAuthController::class , 'showLogin'])->name('customer.login')->middleware('guest:customer');
+
 Route::post('/logout', [CustomerAuthController::class , 'logout'])->name('customer.logout');
 
 // Cart — session based, no login needed
@@ -91,6 +99,16 @@ Route::middleware('customer.auth')->group(function () {
     Route::get('/order/cashfree/verify', [OrderController::class , 'verifyCashfreePayment'])->name('order.cashfree.verify');
     Route::post('/order/cod', [OrderController::class , 'createCodOrder'])->name('order.cod');
 
+    // ── Order Returns (customer login required) ──────────────────
+    Route::get('/order-returns', [OrderReturnController::class, 'index'])->name('order-returns.index');
+    Route::get('/order-returns/create/{orderNumber}', [OrderReturnController::class, 'create'])->name('order-returns.create');
+    Route::post('/order-returns/store/{orderNumber}', [OrderReturnController::class, 'store'])->name('order-returns.store');
+    Route::get('/order-returns/{id}', [OrderReturnController::class, 'show'])->name('order-returns.show');
+
+    // ── My Account (customer login required) ───────────────────
+    Route::get('/my-account', [CustomerDashboardController::class, 'account'])->name('customer.account');
+    Route::get('/my-account/edit', [CustomerDashboardController::class, 'edit'])->name('customer.account.edit');
+    Route::post('/my-account/update', [CustomerDashboardController::class, 'update'])->name('customer.account.update');
 
     // ── Wishlist (customer login required) ────────────────────
 
@@ -109,6 +127,9 @@ Route::middleware('customer.auth')->group(function () {
 // ══════════════════════════════════════════════════════════════════════
 
 Route::middleware(['auth'])->group(function () {
+
+    // ── Dashboard Home ────────────────────────────────────────────────
+    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
 
     // ── Misc Pages ────────────────────────────────────────────────────
     Route::controller(HomeController::class)->group(function () {
@@ -204,6 +225,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/notification', 'notification')->name('notification');
             Route::get('/notification-alert', 'notificationAlert')->name('notificationAlert');
             Route::get('/payment-gateway', 'paymentGateway')->name('paymentGateway');
+            Route::post('/payment-gateway', 'updatePaymentGateway')->name('paymentGateway.update');
             Route::get('/theme', 'theme')->name('theme');
         }
         );
@@ -372,6 +394,41 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('reviews/{review}/approve', [ProductReviewController::class, 'approve'])->name('dashboard.reviews.approve');
                 Route::post('reviews/{review}/reject', [ProductReviewController::class, 'reject'])->name('dashboard.reviews.reject');
                 Route::delete('reviews/{review}', [ProductReviewController::class, 'destroy'])->name('dashboard.reviews.destroy');
+
+                // Pages (Settings → Pages)
+                Route::resource('pages', \App\Http\Controllers\Admin\PageController::class)->names([
+                    'index' => 'dashboard.pages.index',
+                    'create' => 'dashboard.pages.create',
+                    'store' => 'dashboard.pages.store',
+                    'show' => 'dashboard.pages.show',
+                    'edit' => 'dashboard.pages.edit',
+                    'update' => 'dashboard.pages.update',
+                    'destroy' => 'dashboard.pages.destroy',
+                ]);
+
+                // Site Settings (Settings → Site Settings)
+                Route::get('site-settings', [\App\Http\Controllers\Admin\SiteSettingController::class, 'edit'])->name('dashboard.site-settings.edit');
+                Route::post('site-settings', [\App\Http\Controllers\Admin\SiteSettingController::class, 'update'])->name('dashboard.site-settings.update');
+
+                // Header Links (Settings → Header Links)
+                Route::resource('header-links', \App\Http\Controllers\Admin\HeaderLinkController::class)->names([
+                    'index' => 'dashboard.header-links.index',
+                    'create' => 'dashboard.header-links.create',
+                    'store' => 'dashboard.header-links.store',
+                    'edit' => 'dashboard.header-links.edit',
+                    'update' => 'dashboard.header-links.update',
+                    'destroy' => 'dashboard.header-links.destroy',
+                ]);
+
+                // Footer Links (Settings → Footer Links)
+                Route::resource('footer-links', \App\Http\Controllers\Admin\FooterLinkController::class)->names([
+                    'index' => 'dashboard.footer-links.index',
+                    'create' => 'dashboard.footer-links.create',
+                    'store' => 'dashboard.footer-links.store',
+                    'edit' => 'dashboard.footer-links.edit',
+                    'update' => 'dashboard.footer-links.update',
+                    'destroy' => 'dashboard.footer-links.destroy',
+                ]);
             }
             );
         });

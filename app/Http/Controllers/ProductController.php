@@ -11,6 +11,7 @@ use App\Models\ProductVariation;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -48,12 +49,14 @@ class ProductController extends Controller
             'description'       => 'nullable|string',
             'short_description' => 'nullable|string',
             'base_price'        => 'required|numeric|min:0',
+            'unit'              => 'required|string|max:50',
             'shipping_charge'   => 'nullable|numeric|min:0',
             'tax_rate'          => 'nullable|numeric|min:0|max:100',
             'status'            => 'required|in:active,inactive,draft',
             'video_url'         => 'nullable|url|max:500',
             'meta_title'        => 'nullable|string|max:255',
-            'meta_description'  => 'nullable|string',
+            'meta_description'  => 'nullable|string|max:500',
+            'meta_keyword'      => 'nullable|string|max:500',
             'featured_image'    => 'nullable|image|max:2048',
             'gallery.*'         => 'nullable|image|max:2048',
             'tags'              => 'nullable|array',
@@ -70,6 +73,7 @@ class ProductController extends Controller
                 $varRules["variations.{$i}.sku"]             = 'required|string|max:100|distinct|unique:product_variations,sku';
                 $varRules["variations.{$i}.price"]           = 'required|numeric|min:0';
                 $varRules["variations.{$i}.weight"]          = 'nullable|numeric|min:0';
+                $varRules["variations.{$i}.unit"]            = 'nullable|string|max:50';
                 $varRules["variations.{$i}.stock_quantity"]  = 'required|integer|min:0';
             }
             $request->validate($varRules);
@@ -97,6 +101,7 @@ class ProductController extends Controller
                     'description'       => $request->description,
                     'short_description' => $request->short_description,
                     'base_price'        => $request->base_price,
+                    'unit'              => $request->unit ?? 'kg',
                     'shipping_charge'   => $request->shipping_charge ?? 0,
                     'tax_rate'          => $request->tax_rate ?? 0,
                     'status'            => $request->status,
@@ -104,6 +109,7 @@ class ProductController extends Controller
                     'video_url'         => $request->video_url,
                     'meta_title'        => $request->meta_title,
                     'meta_description'  => $request->meta_description,
+                    'meta_keyword'      => $request->meta_keyword,
                 ]);
 
                 // 3. Gallery images
@@ -142,6 +148,7 @@ class ProductController extends Controller
                             'attribute_value' => $varData['attribute_value'],
                             'price'           => $varData['price'],
                             'weight'          => $varData['weight'] ?? null,
+                            'unit'            => $varData['unit'] ?? null,
                             'stock_quantity'  => (int) $varData['stock_quantity'],
                             'is_active'       => true,
                             'image_path'      => $varImagePath,
@@ -168,13 +175,17 @@ class ProductController extends Controller
             });
 
         } catch (\Exception $e) {
-            // ── Shows the REAL error on screen instead of silent redirect ──
-            dd([
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
+            Log::error('Product creation failed', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'trace'     => $e->getTraceAsString(),
+                'request'   => $request->except(['featured_image', 'gallery', 'variations.*.image']),
             ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Unable to create product. Please try again.');
         }
 
         return redirect()->route('dashboard.products.index')
@@ -211,10 +222,14 @@ class ProductController extends Controller
             'description'       => 'nullable|string',
             'short_description' => 'nullable|string',
             'base_price'        => 'required|numeric|min:0',
+            'unit'              => 'required|string|max:50',
             'shipping_charge'   => 'nullable|numeric|min:0',
             'tax_rate'          => 'nullable|numeric|min:0|max:100',
             'status'            => 'required|in:active,inactive,draft',
             'video_url'         => 'nullable|url|max:500',
+            'meta_title'        => 'nullable|string|max:255',
+            'meta_description'  => 'nullable|string|max:500',
+            'meta_keyword'      => 'nullable|string|max:500',
             'featured_image'    => 'nullable|image|max:2048',
             'gallery.*'         => 'nullable|image|max:2048',
             'tags'              => 'nullable|array',
@@ -247,6 +262,7 @@ class ProductController extends Controller
                     'description'       => $request->description,
                     'short_description' => $request->short_description,
                     'base_price'        => $request->base_price,
+                    'unit'              => $request->unit ?? 'kg',
                     'shipping_charge'   => $request->shipping_charge ?? 0,
                     'tax_rate'          => $request->tax_rate ?? 0,
                     'status'            => $request->status,
@@ -254,6 +270,7 @@ class ProductController extends Controller
                     'video_url'         => $request->video_url,
                     'meta_title'        => $request->meta_title,
                     'meta_description'  => $request->meta_description,
+                    'meta_keyword'      => $request->meta_keyword,
                 ]);
 
                 // 3. Gallery images
@@ -297,6 +314,7 @@ class ProductController extends Controller
                                     'attribute_value' => $varData['attribute_value'],
                                     'price'           => $varData['price'],
                                     'weight'          => $varData['weight'] ?? null,
+                                    'unit'            => $varData['unit'] ?? null,
                                     'stock_quantity'  => (int) $varData['stock_quantity'],
                                     'image_path'      => $varImagePath ?: $existing->image_path,
                                 ]);
@@ -310,6 +328,7 @@ class ProductController extends Controller
                                 'attribute_value' => $varData['attribute_value'],
                                 'price'           => $varData['price'],
                                 'weight'          => $varData['weight'] ?? null,
+                                'unit'            => $varData['unit'] ?? null,
                                 'stock_quantity'  => (int) $varData['stock_quantity'],
                                 'is_active'       => true,
                                 'image_path'      => $varImagePath,
@@ -337,12 +356,18 @@ class ProductController extends Controller
             });
 
         } catch (\Exception $e) {
-            dd([
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
+            Log::error('Product update failed', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'trace'     => $e->getTraceAsString(),
+                'product_id'=> $product->id,
+                'request'   => $request->except(['featured_image', 'gallery', 'variations.*.image']),
             ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Unable to update product. Please try again.');
         }
 
         return redirect()->route('dashboard.products.index')

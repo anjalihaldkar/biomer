@@ -1,5 +1,54 @@
 @extends('layout.frontlayout')
-@section('title', $product->name . ' – Bharat Biomer')
+@section('title', $product->meta_title ?? $product->name . ' – Bharat Biomer')
+
+@push('meta')
+  <meta name="description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic products from Bharat Biomer' }}">
+  <meta name="keywords" content="{{ $product->meta_keyword ?? $product->name . ', organic, products' }}">
+  <meta name="product:category" content="{{ $product->category->name ?? 'Products' }}">
+  
+  {{-- Open Graph Tags --}}
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="{{ $product->meta_title ?? $product->name }}">
+  <meta property="og:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
+  <meta property="og:url" content="{{ url()->current() }}">
+  @if($product->featured_image)
+    <meta property="og:image" content="{{ Storage::url($product->featured_image) }}">
+  @endif
+  
+  {{-- Twitter Card Tags --}}
+  <meta name="twitter:card" content="product">
+  <meta name="twitter:title" content="{{ $product->meta_title ?? $product->name }}">
+  <meta name="twitter:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
+  @if($product->featured_image)
+    <meta name="twitter:image" content="{{ Storage::url($product->featured_image) }}">
+  @endif
+  
+  {{-- Product Schema.org Structured Data --}}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": "{{ $product->name }}",
+    "description": "{{ $product->meta_description ?? $product->short_description ?? $product->description }}",
+    "image": "{{ $product->featured_image ? Storage::url($product->featured_image) : asset('assets/images/product-bottle.svg') }}",
+    "brand": {
+      "@type": "Brand",
+      "name": "{{ $product->brand->name ?? 'Bharat Biomer' }}"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "{{ $product->base_price }}",
+      "priceCurrency": "INR",
+      "availability": "{{ $product->isInStock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' }}"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "{{ $product->approvedReviews->count() > 0 ? number_format($product->approvedReviews->avg('rating'), 1) : '5' }}",
+      "reviewCount": "{{ $product->approvedReviews->count() }}"
+    }
+  }
+  </script>
+@endpush
 
 @section('content')
 
@@ -92,15 +141,25 @@
                     <p class="pd__technical">{{ $product->technical_content }}</p>
                   @endif
 
+                  @php
+                    $visibleVariations = $product->variations->where('is_active', true);
+                    if ($visibleVariations->isEmpty()) {
+                        $visibleVariations = $product->variations;
+                    }
+                  @endphp
+
                   {{-- ── Price Box ── --}}
                   <div class="pd__price-box">
                     <span class="pd__price-label">Price</span>
                     <div class="pd__price-row">
                       <span class="pd__price" id="displayPrice">
-                        ₹{{ number_format($product->variations->count() ? $product->variations->min('price') : $product->base_price, 2) }}
+                        ₹{{ number_format($product->base_price, 2) }}
+                      </span>
+                      <span class="pd__price-unit" id="priceUnit" style="font-size: 0.9rem; color: #7aab7a; margin-left: 4px;">
+                        / {{ $product->unit ?? 'unit' }}
                       </span>
                       @if($product->variations->count())
-                        <span class="pd__price-note" id="priceNote">Starting price</span>
+                        <span class="pd__price-note" id="priceNote">Default pack</span>
                       @endif
                     </div>
                   </div>
@@ -115,42 +174,46 @@
                   {{-- ── Variation Selector ── --}}
                   @if($product->variations->count())
                   <div class="pd__variation-wrap">
-                    <h5 class="avan__features-heading">
-                      Select
-                      {{ $product->variations->first()->attribute_name ?? 'Variant' }}
-                    </h5>
-
-                    <div class="pd__variation-grid" id="variationGrid">
-                      @foreach($product->variations as $var)
-                        @if($var->is_active)
-                        <button type="button"
-                                class="pd__var-btn {{ $loop->first ? 'pd__var-btn--active' : '' }}"
-                                data-id="{{ $var->id }}"
-                                data-price="{{ $var->price }}"
-                                data-stock="{{ $var->stock_quantity }}"
-                                data-sku="{{ $var->sku }}"
-                                data-value="{{ $var->attribute_value }}"
-                                data-image="{{ $var->image_path ? Storage::url($var->image_path) : '' }}"
-                                onclick="selectVariation(this)">
-                          {{ $var->attribute_value }}
-                        </button>
-                        @endif
-                      @endforeach
-                    </div>
-
                     {{-- Stock indicator --}}
+                    @php
+                      $defaultStock = $product->stock_quantity;
+                    @endphp
                     <p class="pd__stock" id="stockInfo">
-                      @php $firstVar = $product->variations->where('is_active', true)->first(); @endphp
-                      @if($firstVar)
-                        @if($firstVar->stock_quantity > 10)
-                          <span class="pd__stock--in">✓ In Stock ({{ $firstVar->stock_quantity }} available)</span>
-                        @elseif($firstVar->stock_quantity > 0)
-                          <span class="pd__stock--low">⚠ Low Stock ({{ $firstVar->stock_quantity }} left)</span>
-                        @else
-                          <span class="pd__stock--out">✕ Out of Stock</span>
-                        @endif
+                      @if($defaultStock > 10)
+                        <span class="pd__stock--in">✓ In Stock ({{ $defaultStock }} available)</span>
+                      @elseif($defaultStock > 0)
+                        <span class="pd__stock--low">⚠ Low Stock ({{ $defaultStock }} left)</span>
+                      @else
+                        <span class="pd__stock--out">✕ Out of Stock</span>
                       @endif
                     </p>
+
+                    {{-- Visual Variant Cards --}}
+                    <div class="pd__variant-cards-section mt-4">
+                      <h5 class="avan__features-heading" style="font-size: 1rem; margin-bottom: 1.2rem;">Choose Your Pack Size</h5>
+                      <div class="pd__variant-cards-grid">
+                        @foreach($visibleVariations as $var)
+                          <div class="pd__variant-card"
+                               data-id="{{ $var->id }}"
+                               data-price="{{ $var->price }}"
+                               data-stock="{{ $var->stock_quantity }}"
+                               data-value="{{ $var->attribute_value }}"
+                               data-unit="{{ $var->unit ?? $product->unit }}"
+                               data-image="{{ $var->image_path ? Storage::url($var->image_path) : '' }}"
+                               onclick="selectVariation(this)">
+                            @if($var->image_path)
+                              <img src="{{ Storage::url($var->image_path) }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
+                            @else
+                              <img src="{{ asset('assets/images/product-bottle.svg') }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
+                            @endif
+                            <div class="pd__variant-card-info">
+                              <p class="pd__variant-card-title">{{ $var->attribute_value }}</p>
+                              <p class="pd__variant-card-price">₹{{ number_format($var->price, 2) }}<span class="pd__variant-card-unit">/ {{ $var->unit ?? $product->unit }}</span></p>
+                            </div>
+                          </div>
+                        @endforeach
+                      </div>
+                    </div>
                   </div>
                   @else
                     {{-- No variations --}}
@@ -542,7 +605,7 @@
     font-style: italic;
   }
 
-  /* ── Variation buttons ─────────────────────── */
+  /* ── Variation Buttons ─────────────────────── */
   .pd__variation-wrap {
     margin-bottom: 18px;
   }
@@ -571,6 +634,60 @@
     border-color: #2d7a45;
     background: #2d7a45;
     color: #fff;
+  }
+
+  /* ── Variant Cards Grid ────────────────────── */
+  .pd__variant-cards-section {
+    padding-top: 1.5rem;
+    border-top: 1px solid #e8f0e4;
+  }
+  .pd__variant-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .pd__variant-card {
+    background: #fff;
+    border: 2px solid #e8f0e4;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+  .pd__variant-card:hover {
+    border-color: #2d7a45;
+    box-shadow: 0 4px 12px rgba(45, 122, 69, 0.15);
+    transform: translateY(-2px);
+  }
+  .pd__variant-card-img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .pd__variant-card-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2d7a45;
+    margin-bottom: 4px;
+  }
+  .pd__variant-card-price {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2d7a45;
+    margin-bottom: 4px;
+  }
+  .pd__variant-card-unit {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #7aab7a;
+  }
+  .pd__variant-card-stock {
+    font-size: 0.75rem;
+    margin-bottom: 0;
   }
 
   /* ── Stock ─────────────────────────────────── */
@@ -734,21 +851,38 @@
 @push('scripts')
 <script>
   // ── Variation selector ───────────────────────────────────────────────
-  function selectVariation(btn) {
+  function selectVariation(el) {
+    const variantId = el.dataset.id || el.dataset.variantId;
+    if (!variantId) {
+      return;
+    }
 
-    // Remove active from all
-    document.querySelectorAll('.pd__var-btn').forEach(b => b.classList.remove('pd__var-btn--active'));
-    btn.classList.add('pd__var-btn--active');
+    document.querySelectorAll('.pd__variant-card').forEach(card => {
+      if (card.dataset.variantId == variantId || card.dataset.id == variantId) {
+        card.classList.add('pd__variant-card--active');
+        card.style.borderColor = '#2d7a45';
+        card.style.backgroundColor = '#f9fcf8';
+      } else {
+        card.classList.remove('pd__variant-card--active');
+        card.style.borderColor = '#e8f0e4';
+        card.style.backgroundColor = '#fff';
+      }
+    });
 
-    // Update price
-    const price = parseFloat(btn.dataset.price).toLocaleString('en-IN', {
+    const price = parseFloat(el.dataset.price).toLocaleString('en-IN', {
       minimumFractionDigits: 2, maximumFractionDigits: 2
     });
     document.getElementById('displayPrice').textContent = '₹' + price;
-    document.getElementById('priceNote') && (document.getElementById('priceNote').textContent = btn.dataset.value);
 
-    // Update stock
-    const stock   = parseInt(btn.dataset.stock);
+    const unit = el.dataset.unit || 'unit';
+    const priceUnitEl = document.getElementById('priceUnit');
+    if (priceUnitEl) {
+      priceUnitEl.textContent = '/ ' + unit;
+    }
+
+    document.getElementById('priceNote') && (document.getElementById('priceNote').textContent = el.dataset.value);
+
+    const stock = parseInt(el.dataset.stock);
     const stockEl = document.getElementById('stockInfo');
     if (stock > 10) {
       stockEl.innerHTML = `<span class="pd__stock--in">✓ In Stock (${stock} available)</span>`;
@@ -758,14 +892,12 @@
       stockEl.innerHTML = `<span class="pd__stock--out">✕ Out of Stock</span>`;
     }
 
-    // Update image if variation has one
-    if (btn.dataset.image) {
-      document.getElementById('mainImage').src = btn.dataset.image;
+    if (el.dataset.image) {
+      document.getElementById('mainImage').src = el.dataset.image;
       document.querySelectorAll('.pd__thumb').forEach(t => t.classList.remove('pd__thumb--active'));
     }
 
-    // Store selected variation id on cart button
-    document.getElementById('addToCartBtn').dataset.variationId = btn.dataset.id;
+    document.getElementById('addToCartBtn').dataset.variationId = variantId;
   }
 
   // ── Thumbnail gallery ────────────────────────────────────────────────
@@ -773,6 +905,25 @@
     document.getElementById('mainImage').src = src;
     document.querySelectorAll('.pd__thumb').forEach(t => t.classList.remove('pd__thumb--active'));
     thumb.classList.add('pd__thumb--active');
+  }
+
+  function updateGlobalCartBadge(count) {
+    if (count > 0) {
+      document.querySelectorAll('.bb-cart-badge').forEach(badge => {
+        badge.textContent = count;
+      });
+
+      document.querySelectorAll('.bb-cart-icon').forEach(icon => {
+        if (!icon.querySelector('.bb-cart-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'bb-cart-badge';
+          badge.textContent = count;
+          icon.appendChild(badge);
+        }
+      });
+    } else {
+      document.querySelectorAll('.bb-cart-badge').forEach(badge => badge.remove());
+    }
   }
 
   // ── Add to Cart ──────────────────────────────────────────────────────
@@ -794,6 +945,9 @@
         const btn = document.getElementById('addToCartBtn');
         btn.textContent = '✓ Added to Cart!';
         btn.style.background = '#4caf72';
+        if (d.cart_count !== undefined) {
+          updateGlobalCartBadge(d.cart_count);
+        }
         setTimeout(() => {
           btn.textContent = '🛒 Add to Cart';
           btn.style.background = '';
@@ -802,12 +956,6 @@
     })
     .catch(() => alert('Could not add to cart. Please try again.'));
   });
-
-  // ── Auto-select first variation on load ──────────────────────────────
-  const firstVar = document.querySelector('.pd__var-btn');
-  if (firstVar) {
-    document.getElementById('addToCartBtn').dataset.variationId = firstVar.dataset.id;
-  }
 
   // ── Star Picker ──────────────────────────────────────────────────────
   const pickStars = document.querySelectorAll('.rv__pick-star');

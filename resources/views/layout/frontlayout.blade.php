@@ -5,7 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>Bharat Biomer – Nature-Powered Biology</title>
+    <title>@yield('title', 'Bharat Biomer – Nature-Powered Biology')</title>
+
+    {{-- Dynamic Meta Tags (pushed from pages) --}}
+    @stack('meta')
 
     {{-- Bootstrap 5 CSS --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -108,30 +111,22 @@
             <div class="collapse navbar-collapse" id="bbNavMenu">
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
 
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('home') ? 'active' : '' }}"
-                            href="{{ url('/') }}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('technology') ? 'active' : '' }}"
-                            href="{{ url('/technology') }}">Technology</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}"
-                            href="{{ route('products.index') }}">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('about') ? 'active' : '' }}"
-                            href="{{ url('/about') }}">About Us</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('impact') ? 'active' : '' }}"
-                            href="{{ url('/impact') }}">Impact</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link bb-nav-link {{ request()->routeIs('contact') ? 'active' : '' }}"
-                            href="{{ url('/contact') }}">Contact</a>
-                    </li>
+                    {{-- Dynamic Navigation from Database --}}
+                    @php
+                        $headerLinks = \App\Models\HeaderLink::getActive();
+                    @endphp
+                    @foreach($headerLinks as $link)
+                        <li class="nav-item">
+                            <a class="nav-link bb-nav-link"
+                                href="{{ $link->url }}"
+                                target="{{ $link->target }}">
+                                @if($link->icon)
+                                    <iconify-icon icon="{{ $link->icon }}"></iconify-icon>
+                                @endif
+                                {{ $link->label }}
+                            </a>
+                        </li>
+                    @endforeach
 
                     {{-- ── Divider ── --}}
                     <li class="nav-item d-lg-none"><hr style="border-color:#e8f0e4;margin:.5rem 0;"></li>
@@ -195,6 +190,14 @@
                     </a>
                 </li>
 
+                {{-- ✅ My Returns --}}
+                <li>
+                    <a class="dropdown-item" href="{{ route('order-returns.index') }}"
+                       style="font-size:.88rem;color:#6b7c6b;padding:8px 16px;border-radius:6px;">
+                        My Returns
+                    </a>
+                </li>
+
                 {{-- ✅ Wishlist --}}
                 <li>
                     <a class="dropdown-item" href="{{ route('wishlist.index') }}"
@@ -204,6 +207,14 @@
                         @if($wlCount > 0)
                             <span style="background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;">{{ $wlCount }}</span>
                         @endif
+                    </a>
+                </li>
+
+                {{-- ✅ My Account --}}
+                <li>
+                    <a class="dropdown-item" href="{{ route('customer.account') }}"
+                       style="font-size:.88rem;color:#1a2e1a;padding:8px 16px;border-radius:6px;">
+                        My Account
                     </a>
                 </li>
 
@@ -270,38 +281,51 @@
         <div class="container">
             <div class="row g-4">
 
+                {{-- Footer Brand Section --}}
+                @php
+                    $settings = \App\Models\SiteSetting::first();
+                @endphp
                 <div class="col-12 col-md-4 col-lg-3">
                     <div class="d-flex align-items-center mb-2">
                         <div class="footer-logo-icon">
-                            <img src="{{ asset('assets/images/footer-logo.svg') }}" alt="Bharat Biomer" height="40" />
+                            @if($settings && $settings->footer_logo_path)
+                                <img src="{{ asset('storage/'.$settings->footer_logo_path) }}" alt="{{ $settings->site_name ?? 'Bharat Biomer' }}" height="40" />
+                            @else
+                                <img src="{{ asset('assets/images/footer-logo.svg') }}" alt="Bharat Biomer" height="40" />
+                            @endif
                         </div>
                     </div>
-                    <p class="footer-brand-tagline">Advanced biological solutions for sustainable farming.</p>
+                    <p class="footer-brand-tagline">{{ $settings->tagline ?? 'Advanced biological solutions for sustainable farming.' }}</p>
                 </div>
 
-                <div class="col-6 col-md-2 col-lg-3">
-                    <p class="footer-col-title">Products</p>
-                    <a href="{{ route('products.index') }}" class="footer-link">Bio-stimulants</a>
-                    <a href="{{ route('products.index') }}" class="footer-link">Microbial Solutions</a>
-                </div>
+                {{-- Dynamic Footer Links Sections (Column-wise) --}}
+                @php
+                    $footerSections = \App\Models\FooterLink::selectRaw('DISTINCT section')
+                        ->where('is_active', true)
+                        ->orderBy('section')
+                        ->pluck('section');
+                @endphp
 
-                <div class="col-6 col-md-3 col-lg-3">
-                    <p class="footer-col-title">Company</p>
-                    <a href="{{ url('/about') }}" class="footer-link">About Us</a>
-                    <a href="{{ url('/technology') }}" class="footer-link">Technology</a>
-                </div>
-
-                <div class="col-12 col-md-3 col-lg-3">
-                    <p class="footer-col-title">Contact</p>
-                    <p class="footer-contact-item">admin@bharatbiomer.com</p>
-                    <p class="footer-contact-item">+91 7828333334</p>
-                </div>
+                @foreach($footerSections as $section)
+                    <div class="col-6 col-md-3 col-lg-3">
+                        <p class="footer-col-title">{{ $section }}</p>
+                        @php
+                            $sectionLinks = \App\Models\FooterLink::where('section', $section)
+                                ->where('is_active', true)
+                                ->orderBy('position')
+                                ->get();
+                        @endphp
+                        @foreach($sectionLinks as $link)
+                            <a href="{{ $link->url }}" class="footer-link" target="{{ $link->target }}">{{ $link->label }}</a>
+                        @endforeach
+                    </div>
+                @endforeach
 
             </div>
 
             <hr class="footer-divider" />
             <div class="footer-bottom">
-                &copy; {{ date('Y') }} Bharat Biomer. All rights reserved.
+                {{ $settings->footer_text ?? '© '.date('Y').' Bharat Biomer. All rights reserved.' }}
             </div>
         </div>
     </footer>

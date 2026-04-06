@@ -115,6 +115,30 @@
 .shop__price-label { font-size: 0.75rem; color: #9aab9a; }
 .shop__price { font-size: 1.3rem; font-weight: 800; color: #2d7a45; }
 .shop__variants { font-size: 0.78rem; color: #9aab9a; margin-bottom: 1rem; }
+.shop__variation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0.9rem;
+}
+.shop__variation-btn {
+  border: 1px solid #d1e7d5;
+  background: #f4faf0;
+  color: #2d7a45;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.shop__variation-btn:hover {
+  background: #eaf5e8;
+}
+.shop__variation-btn--active {
+  background: #2d7a45;
+  color: #fff;
+  border-color: #2d7a45;
+}
 .shop__actions {
   display: flex;
   gap: 10px;
@@ -520,17 +544,31 @@
                 <p class="shop__desc">{{ Str::limit($product->short_description, 80) }}</p>
               @endif
 
-              <div class="shop__price-row">
-                @if($product->variations->count())
-                  <span class="shop__price-label">Starting from</span>
-                  <span class="shop__price">₹{{ number_format($product->variations->min('price'), 2) }}</span>
-                @else
-                  <span class="shop__price">₹{{ number_format($product->base_price, 2) }}</span>
-                @endif
-              </div>
-
               @if($product->variations->count())
+                <div class="shop__price-row">
+                  <span class="shop__price-label">Price</span>
+                  <span class="shop__price">₹{{ number_format($product->base_price, 2) }}</span>
+                  <span class="shop__price-label shop__price-unit">/ {{ $product->unit ?? 'unit' }}</span>
+                </div>
+                <div class="shop__variation-row">
+                  @foreach($product->variations->where('is_active', true) as $var)
+                    <button type="button"
+                            class="shop__variation-btn"
+                            data-product-id="{{ $product->id }}"
+                            data-variation-id="{{ $var->id }}"
+                            data-price="{{ $var->price }}"
+                            data-unit="{{ $var->unit ?? $product->unit }}"
+                            data-name="{{ $var->attribute_value }}">
+                      {{ $var->attribute_value }}
+                    </button>
+                  @endforeach
+                </div>
                 <p class="shop__variants">{{ $product->variations->count() }} pack size(s) available</p>
+              @else
+                <div class="shop__price-row">
+                  <span class="shop__price">₹{{ number_format($product->base_price, 2) }}</span>
+                  <span class="shop__price-label" style="margin-left: 8px;">/ {{ $product->unit ?? 'unit' }}</span>
+                </div>
               @endif
 
               <div class="shop__actions">
@@ -635,6 +673,49 @@
 @push('scripts')
 <script>
   // ── Add to Cart ──────────────────────────────────────────────────────
+  document.querySelectorAll('.shop__variation-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const card = this.closest('.shop__card');
+      if (!card) return;
+
+      card.querySelectorAll('.shop__variation-btn').forEach(b => b.classList.remove('shop__variation-btn--active'));
+      this.classList.add('shop__variation-btn--active');
+
+      const priceEl = card.querySelector('.shop__price');
+      const unitEl  = card.querySelector('.shop__price-unit');
+      if (priceEl) {
+        priceEl.textContent = '₹' + parseFloat(this.dataset.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      if (unitEl) {
+        unitEl.textContent = '/ ' + this.dataset.unit;
+      }
+
+      const addBtn = card.querySelector('.add-to-cart');
+      if (addBtn) {
+        addBtn.dataset.variationId = this.dataset.variationId;
+      }
+    });
+  });
+
+  function updateGlobalCartBadge(count) {
+    if (count > 0) {
+      document.querySelectorAll('.bb-cart-badge').forEach(badge => {
+        badge.textContent = count;
+      });
+
+      document.querySelectorAll('.bb-cart-icon').forEach(icon => {
+        if (!icon.querySelector('.bb-cart-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'bb-cart-badge';
+          badge.textContent = count;
+          icon.appendChild(badge);
+        }
+      });
+    } else {
+      document.querySelectorAll('.bb-cart-badge').forEach(badge => badge.remove());
+    }
+  }
+
   document.querySelectorAll('.add-to-cart').forEach(btn => {
     btn.addEventListener('click', function () {
       const id   = this.dataset.id;
@@ -646,11 +727,14 @@
           'Content-Type': 'application/json',
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
-        body: JSON.stringify({ product_id: id, quantity: 1 })
+        body: JSON.stringify({ product_id: id, quantity: 1, variation_id: this.dataset.variationId || null })
       })
       .then(r => r.json())
       .then(d => {
         if (d.success) {
+          if (d.cart_count !== undefined) {
+            updateGlobalCartBadge(d.cart_count);
+          }
           this.textContent = '✓ Added!';
           this.classList.add('shop__btn--added');
           setTimeout(() => {
