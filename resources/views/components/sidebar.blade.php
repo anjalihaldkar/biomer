@@ -252,6 +252,22 @@
                 </a>
                 <ul class="sidebar-submenu">
                     <li>
+                        <a href="{{ route('dashboard.site-settings.edit') }}"><i
+                                class="ri-circle-fill circle-icon text-info-main w-auto"></i> Site Settings</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.header-links.index') }}"><i
+                                class="ri-circle-fill circle-icon text-success-main w-auto"></i> Header Links</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.footer-links.index') }}"><i
+                                class="ri-circle-fill circle-icon text-success-main w-auto"></i> Footer Links</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('dashboard.pages.index') }}"><i
+                                class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Pages</a>
+                    </li>
+                    <li>
                         <a href="{{ route('company') }}"><i
                                 class="ri-circle-fill circle-icon text-primary-600 w-auto"></i> Company</a>
                     </li>

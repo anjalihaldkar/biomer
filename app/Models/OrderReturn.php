@@ -8,12 +8,17 @@ class OrderReturn extends Model
 {
     protected $fillable = [
         'order_id',
+        'order_item_id',
         'customer_id',
         'reason',
+        'return_reason',
         'description',
+        'customer_notes',
         'status',
         'refund_amount',
+        'return_tracking_number',
         'approved_at',
+        'requested_at',
         'refunded_at',
         'admin_notes',
     ];
@@ -21,6 +26,7 @@ class OrderReturn extends Model
     protected $casts = [
         'refund_amount' => 'decimal:2',
         'approved_at' => 'datetime',
+        'requested_at' => 'datetime',
         'refunded_at' => 'datetime',
     ];
 

@@ -100,6 +100,16 @@
                 <small class="text-muted d-block mt-1">GST/VAT rate (0 = no tax)</small>
               </div>
 
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Unit <span class="text-danger">*</span></label>
+                <input type="text" name="unit"
+                       class="form-control @error('unit') is-invalid @enderror"
+                       value="{{ old('unit', $product->unit ?? 'kg') }}"
+                       placeholder="e.g. kg, liter, piece, ton, box" required>
+                @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <small class="text-muted d-block mt-1">Unit of measurement for this product</small>
+              </div>
+
               <div class="col-12">
                 <label class="form-label fw-semibold">Technical Content</label>
                 <input type="text" name="technical_content"
@@ -132,22 +142,36 @@
         {{-- SEO --}}
         <div class="card basic-data-table mb-4">
           <div class="card-header">
-            <h5 class="card-title mb-0">SEO</h5>
+            <h5 class="card-title mb-0">🔍 SEO Settings</h5>
           </div>
           <div class="card-body">
             <div class="row g-3">
               <div class="col-12">
-                <label class="form-label fw-semibold">Meta Title</label>
+                <label class="form-label fw-semibold">Meta Title <span class="text-muted">(50-60 chars)</span></label>
                 <input type="text" name="meta_title"
                        class="form-control @error('meta_title') is-invalid @enderror"
-                       value="{{ old('meta_title', $product->meta_title) }}">
+                       value="{{ old('meta_title', $product->meta_title) }}"
+                       placeholder="e.g., Premium Organic Bhoomi Star | Bharat Biomer"
+                       maxlength="60">
+                <small class="text-muted d-block mt-1">Used in search results and browser tabs</small>
                 @error('meta_title')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
               <div class="col-12">
-                <label class="form-label fw-semibold">Meta Description</label>
-                <textarea name="meta_description" rows="2"
-                          class="form-control @error('meta_description') is-invalid @enderror">{{ old('meta_description', $product->meta_description) }}</textarea>
+                <label class="form-label fw-semibold">Meta Description <span class="text-muted">(150-160 chars)</span></label>
+                <textarea name="meta_description" rows="3"
+                          class="form-control @error('meta_description') is-invalid @enderror"
+                          placeholder="e.g., Discover premium Bhoomi Star for better soil health..."
+                          maxlength="160">{{ old('meta_description', $product->meta_description) }}</textarea>
+                <small class="text-muted d-block mt-1">Appears below title in search results</small>
                 @error('meta_description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Meta Keywords <span class="text-muted">(comma-separated)</span></label>
+                <textarea name="meta_keyword" rows="2"
+                          class="form-control @error('meta_keyword') is-invalid @enderror"
+                          placeholder="e.g., organic fertilizer, soil enhancement, bhoomi star, bio products">{{ old('meta_keyword', $product->meta_keyword) }}</textarea>
+                <small class="text-muted d-block mt-1">Separate keywords with commas. Not displayed but helps search engines.</small>
+                @error('meta_keyword')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
             </div>
           </div>

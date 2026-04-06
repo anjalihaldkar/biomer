@@ -10,8 +10,8 @@ class Product extends Model
     protected $fillable = [
         'name', 'slug', 'sku', 'brand_id', 'category_id',
         'technical_content', 'description', 'short_description',
-        'base_price', 'shipping_charge', 'tax_rate', 'gst_rate', 'stock_quantity', 'manage_stock', 'status',
-        'featured_image', 'video_url', 'meta_title', 'meta_description',
+        'base_price', 'unit', 'shipping_charge', 'tax_rate', 'gst_rate', 'stock_quantity', 'manage_stock', 'status',
+        'featured_image', 'video_url', 'meta_title', 'meta_description', 'meta_keyword',
     ];
 
     protected $casts = [

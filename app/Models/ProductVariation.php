@@ -8,7 +8,7 @@ class ProductVariation extends Model
 {
     protected $fillable = [
         'product_id', 'sku', 'attribute_name', 'attribute_value',
-        'price', 'weight', 'stock_quantity', 'is_active', 'image_path',
+        'price', 'weight', 'unit', 'stock_quantity', 'is_active', 'image_path',
     ];
 
     protected $casts = [

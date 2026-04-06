@@ -1,8 +1,10 @@
-@extends('layout.userpanel')
+@extends('layout.frontlayout')
 @section('title', 'My Orders – Bharat Biomer')
 
-@section('panel')
+@push('styles')
 <style>
+* { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+
 .mo__card {
     background: #fff;
     border-radius: 16px;
@@ -95,9 +97,20 @@
     .mo__header-right { margin-left: 0; }
 }
 </style>
+@endpush
 
-<h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Orders</h1>
-<p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">Track and manage your orders</p>
+@section('content')
+<div class="container my-4">
+    <div class="row g-4">
+        {{-- Sidebar --}}
+        <div class="col-lg-3">
+            @include('components.customer-sidebar')
+        </div>
+
+        {{-- Main Content --}}
+        <div class="col-lg-9">
+            <h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Orders</h1>
+            <p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">Track and manage your orders</p>
 
 @if($orders->count() > 0)
 
@@ -165,5 +178,7 @@
         <a href="{{ route('products.index') }}" class="mo__empty-btn">Browse Products</a>
     </div>
 @endif
-
+        </div>
+    </div>
+</div>
 @endsection

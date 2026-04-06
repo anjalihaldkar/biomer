@@ -1,142 +1,206 @@
 @extends('layout.layout')
 @php
-    $title='Languages';
-    $subTitle = 'Settings - Languages';
+    $title = 'Payment Gateways';
+    $subTitle = 'Settings - Payment Gateways';
 @endphp
 
 @section('content')
 
-            <div class="card h-100 p-0 radius-12">
-                <div class="card-body p-24">
-                    <div class="row gy-4">
-                        <div class="col-xxl-6">
-                            <div class="card radius-12 shadow-none border overflow-hidden">
-                                <div class="card-header bg-neutral-100 border-bottom py-16 px-24 d-flex align-items-center flex-wrap gap-3 justify-content-between">
-                                    <div class="d-flex align-items-center gap-10">
-                                        <span class="w-36-px h-36-px bg-base rounded-circle d-flex justify-content-center align-items-center">
-                                            <img src="{{ asset('assets/images/payment/payment-gateway1.png') }}" alt="" class="">
-                                        </span>
-                                        <span class="text-lg fw-semibold text-primary-light">Paypal</span>
-                                    </div>
-                                    <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
-                                        <input class="form-check-input" type="checkbox" role="switch" checked>
-                                    </div>
-                                </div>
-                                <div class="card-body p-24">
-                                    <div class="row gy-3">
-                                        <div class="col-sm-6">
-                                            <span class="form-label fw-semibold text-primary-light text-md mb-8">Environment <span class="text-danger-600">*</span></span>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="d-flex align-items-center gap-10 fw-medium text-lg">
-                                                    <div class="form-check style-check d-flex align-items-center">
-                                                        <input class="form-check-input radius-4 border border-neutral-500" type="checkbox" name="checkbox" id="sandbox" checked>
-                                                    </div>
-                                                    <label for="sandbox" class="form-label fw-medium text-lg text-primary-light mb-0">Sandbox</label>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-10 fw-medium text-lg">
-                                                    <div class="form-check style-check d-flex align-items-center">
-                                                        <input class="form-check-input radius-4 border border-neutral-500" type="checkbox" name="checkbox" id="Production">
-                                                    </div>
-                                                    <label for="Production" class="form-label fw-medium text-lg text-primary-light mb-0">Production</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="currency" class="form-label fw-semibold text-primary-light text-md mb-8">Currency <span class="text-danger-600">*</span></label>
-                                            <select class="form-control radius-8 form-select" id="currency">
-                                                <option selected disabled>USD</option>
-                                                <option>TK</option>
-                                                <option>Rupee</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="secretKey" class="form-label fw-semibold text-primary-light text-md mb-8">Secret Key <span class="text-danger-600">*</span></label>
-                                            <input type="text" class="form-control radius-8" id="secretKey" placeholder="Secret Key" value="EGtgNkjt3I5lkhEEzicdot8gVH_PcFiKxx6ZBiXpVrp4QLDYcVQQMLX6MMG_fkS9_H0bwmZzBovb4jLP">
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="publicKey" class="form-label fw-semibold text-primary-light text-md mb-8">Publics Key<span class="text-danger-600">*</span></label>
-                                            <input type="text" class="form-control radius-8" id="publicKey" placeholder="Publics Key" value="AcRx7vvy79nbNxBemacGKmnnRe_CtxkItyspBS_eeMIPREwfCEIfPg1uX-bdqPrS_ZFGocxEH_SJRrIJ">
-                                        </div>
+<div class="card h-100 p-0 radius-12">
+    <div class="card-body p-24">
+        
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-24" role="alert">
+                <div class="d-flex align-items-center">
+                    <iconify-icon icon="lucide:check-circle" class="fs-6 me-2"></iconify-icon>
+                    <span>{{ session('success') }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-                                        <div class="col-sm-6">
-                                            <label for="logo" class="form-label fw-semibold text-primary-light text-md mb-8">Logo <span class="text-danger-600">*</span></label>
-                                            <input type="file" class="form-control radius-8" id="logo">
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="logo" class="form-label fw-semibold text-primary-light text-md mb-8"><span class="visibility-hidden">Save</span></label>
-                                            <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
-                                                Save Change
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show mb-24" role="alert">
+                <div class="d-flex align-items-center">
+                    <iconify-icon icon="lucide:alert-circle" class="fs-6 me-2"></iconify-icon>
+                    <span>{{ $errors->first() }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <form action="{{ route('paymentGateway.update') }}" method="POST">
+            @csrf
+
+            <div class="row gy-4">
+
+                {{-- ══════════════════════════════════════════════════
+                    RAZORPAY PAYMENT GATEWAY
+                ══════════════════════════════════════════════════ --}}
+                <div class="col-xxl-6">
+                    <div class="card radius-12 shadow-none border overflow-hidden">
+                        <div class="card-header bg-neutral-100 border-bottom py-16 px-24 d-flex align-items-center flex-wrap gap-3 justify-content-between">
+                            <div class="d-flex align-items-center gap-10">
+                                <span class="w-36-px h-36-px bg-base rounded-circle d-flex justify-content-center align-items-center">
+                                    <iconify-icon icon="mdi:razorpay" class="fs-4 text-primary"></iconify-icon>
+                                </span>
+                                <span class="text-lg fw-semibold text-primary-light">Razorpay</span>
+                            </div>
+                            <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
+                                <input class="form-check-input" type="checkbox" name="razorpay_enabled" value="1" 
+                                    {{ ($gateways->firstWhere('gateway_name', 'razorpay')?->is_enabled) ? 'checked' : '' }}>
                             </div>
                         </div>
-                        <div class="col-xxl-6">
-                            <div class="card radius-12 shadow-none border overflow-hidden">
-                                <div class="card-header bg-neutral-100 border-bottom py-16 px-24 d-flex align-items-center flex-wrap gap-3 justify-content-between">
-                                    <div class="d-flex align-items-center gap-10">
-                                        <span class="w-36-px h-36-px bg-base rounded-circle d-flex justify-content-center align-items-center">
-                                            <img src="{{ asset('assets/images/payment/payment-gateway2.png') }}" alt="" class="">
-                                        </span>
-                                        <span class="text-lg fw-semibold text-primary-light">RazorPay</span>
-                                    </div>
-                                    <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
-                                        <input class="form-check-input" type="checkbox" role="switch" checked>
+                        <div class="card-body p-24">
+                            <div class="row gy-3">
+
+                                <div class="col-sm-6">
+                                    <span class="form-label fw-semibold text-primary-light text-md mb-8">Environment <span class="text-danger-600">*</span></span>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="d-flex align-items-center gap-10 fw-medium text-lg">
+                                            <div class="form-check style-check d-flex align-items-center">
+                                                <input class="form-check-input radius-4 border border-neutral-500" type="radio" name="razorpay_environment" id="razorpay_sandbox" value="sandbox"
+                                                    {{ ($gateways->firstWhere('gateway_name', 'razorpay')?->environment ?? 'sandbox') === 'sandbox' ? 'checked' : '' }}>
+                                            </div>
+                                            <label for="razorpay_sandbox" class="form-label fw-medium text-lg text-primary-light mb-0">Sandbox</label>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-10 fw-medium text-lg">
+                                            <div class="form-check style-check d-flex align-items-center">
+                                                <input class="form-check-input radius-4 border border-neutral-500" type="radio" name="razorpay_environment" id="razorpay_production" value="production"
+                                                    {{ ($gateways->firstWhere('gateway_name', 'razorpay')?->environment ?? 'sandbox') === 'production' ? 'checked' : '' }}>
+                                            </div>
+                                            <label for="razorpay_production" class="form-label fw-medium text-lg text-primary-light mb-0">Production</label>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="card-body p-24">
-                                    <div class="row gy-3">
-                                        <div class="col-sm-6">
-                                            <span class="form-label fw-semibold text-primary-light text-md mb-8">Environment <span class="text-danger-600">*</span></span>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="d-flex align-items-center gap-10 fw-medium text-lg">
-                                                    <div class="form-check style-check d-flex align-items-center">
-                                                        <input class="form-check-input radius-4 border border-neutral-500" type="checkbox" name="checkbox" id="sandbox2" checked>
-                                                    </div>
-                                                    <label for="sandbox2" class="form-label fw-medium text-lg text-primary-light mb-0">Sandbox</label>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-10 fw-medium text-lg">
-                                                    <div class="form-check style-check d-flex align-items-center">
-                                                        <input class="form-check-input radius-4 border border-neutral-500" type="checkbox" name="checkbox" id="Production2">
-                                                    </div>
-                                                    <label for="Production2" class="form-label fw-medium text-lg text-primary-light mb-0">Production</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="currencyTwo" class="form-label fw-semibold text-primary-light text-md mb-8">Currency <span class="text-danger-600">*</span></label>
-                                            <select class="form-control radius-8 form-select" id="currencyTwo">
-                                                <option selected disabled>USD</option>
-                                                <option>TK</option>
-                                                <option>Rupee</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="secretKeyTwo" class="form-label fw-semibold text-primary-light text-md mb-8">Secret Key <span class="text-danger-600">*</span></label>
-                                            <input type="text" class="form-control radius-8" id="secretKeyTwo" placeholder="Secret Key" value="EGtgNkjt3I5lkhEEzicdot8gVH_PcFiKxx6ZBiXpVrp4QLDYcVQQMLX6MMG_fkS9_H0bwmZzBovb4jLP">
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="publicKeyTwo" class="form-label fw-semibold text-primary-light text-md mb-8">Publics Key<span class="text-danger-600">*</span></label>
-                                            <input type="text" class="form-control radius-8" id="publicKeyTwo" placeholder="Publics Key" value="AcRx7vvy79nbNxBemacGKmnnRe_CtxkItyspBS_eeMIPREwfCEIfPg1uX-bdqPrS_ZFGocxEH_SJRrIJ">
-                                        </div>
 
-                                        <div class="col-sm-6">
-                                            <label for="logoTwo" class="form-label fw-semibold text-primary-light text-md mb-8">Logo <span class="text-danger-600">*</span></label>
-                                            <input type="file" class="form-control radius-8" id="logoTwo">
+                                <div class="col-sm-6">
+                                    <label for="razorpay_key_id" class="form-label fw-semibold text-primary-light text-md mb-8">Key ID <span class="text-danger-600">*</span></label>
+                                    <input type="text" class="form-control radius-8" id="razorpay_key_id" name="razorpay_key_id" placeholder="Razorpay Key ID"
+                                        value="{{ $gateways->firstWhere('gateway_name', 'razorpay')?->api_key ?? '' }}">
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <label for="razorpay_key_secret" class="form-label fw-semibold text-primary-light text-md mb-8">Key Secret <span class="text-danger-600">*</span></label>
+                                    <input type="password" class="form-control radius-8" id="razorpay_key_secret" name="razorpay_key_secret" placeholder="Razorpay Key Secret"
+                                        value="{{ $gateways->firstWhere('gateway_name', 'razorpay')?->secret_key ?? '' }}">
+                                </div>
+
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
+                                        Save Changes
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════
+                    CASHFREE PAYMENT GATEWAY
+                ══════════════════════════════════════════════════ --}}
+                <div class="col-xxl-6">
+                    <div class="card radius-12 shadow-none border overflow-hidden">
+                        <div class="card-header bg-neutral-100 border-bottom py-16 px-24 d-flex align-items-center flex-wrap gap-3 justify-content-between">
+                            <div class="d-flex align-items-center gap-10">
+                                <span class="w-36-px h-36-px bg-base rounded-circle d-flex justify-content-center align-items-center">
+                                    <iconify-icon icon="mdi:cashfree" class="fs-4 text-success"></iconify-icon>
+                                </span>
+                                <span class="text-lg fw-semibold text-primary-light">Cashfree</span>
+                            </div>
+                            <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
+                                <input class="form-check-input" type="checkbox" name="cashfree_enabled" value="1"
+                                    {{ ($gateways->firstWhere('gateway_name', 'cashfree')?->is_enabled) ? 'checked' : '' }}>
+                            </div>
+                        </div>
+                        <div class="card-body p-24">
+                            <div class="row gy-3">
+
+                                <div class="col-sm-6">
+                                    <span class="form-label fw-semibold text-primary-light text-md mb-8">Environment <span class="text-danger-600">*</span></span>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="d-flex align-items-center gap-10 fw-medium text-lg">
+                                            <div class="form-check style-check d-flex align-items-center">
+                                                <input class="form-check-input radius-4 border border-neutral-500" type="radio" name="cashfree_environment" id="cashfree_sandbox" value="sandbox"
+                                                    {{ ($gateways->firstWhere('gateway_name', 'cashfree')?->environment ?? 'sandbox') === 'sandbox' ? 'checked' : '' }}>
+                                            </div>
+                                            <label for="cashfree_sandbox" class="form-label fw-medium text-lg text-primary-light mb-0">Sandbox</label>
                                         </div>
-                                        <div class="col-sm-6">
-                                            <label class="form-label fw-semibold text-primary-light text-md mb-8"><span class="visibility-hidden">Save</span></label>
-                                            <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
-                                                Save Change
-                                            </button>
+                                        <div class="d-flex align-items-center gap-10 fw-medium text-lg">
+                                            <div class="form-check style-check d-flex align-items-center">
+                                                <input class="form-check-input radius-4 border border-neutral-500" type="radio" name="cashfree_environment" id="cashfree_production" value="production"
+                                                    {{ ($gateways->firstWhere('gateway_name', 'cashfree')?->environment ?? 'sandbox') === 'production' ? 'checked' : '' }}>
+                                            </div>
+                                            <label for="cashfree_production" class="form-label fw-medium text-lg text-primary-light mb-0">Production</label>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <label for="cashfree_app_id" class="form-label fw-semibold text-primary-light text-md mb-8">App ID <span class="text-danger-600">*</span></label>
+                                    <input type="text" class="form-control radius-8" id="cashfree_app_id" name="cashfree_app_id" placeholder="Cashfree App ID"
+                                        value="{{ $gateways->firstWhere('gateway_name', 'cashfree')?->api_key ?? '' }}">
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <label for="cashfree_secret_key" class="form-label fw-semibold text-primary-light text-md mb-8">Secret Key <span class="text-danger-600">*</span></label>
+                                    <input type="password" class="form-control radius-8" id="cashfree_secret_key" name="cashfree_secret_key" placeholder="Cashfree Secret Key"
+                                        value="{{ $gateways->firstWhere('gateway_name', 'cashfree')?->secret_key ?? '' }}">
+                                </div>
+
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
+                                        Save Changes
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- ══════════════════════════════════════════════════
+                COD - CASH ON DELIVERY
+            ══════════════════════════════════════════════════ --}}
+            <div class="row gy-4 mt-2">
+                <div class="col-xxl-6">
+                    <div class="card radius-12 shadow-none border overflow-hidden">
+                        <div class="card-header bg-neutral-100 border-bottom py-16 px-24 d-flex align-items-center flex-wrap gap-3 justify-content-between">
+                            <div class="d-flex align-items-center gap-10">
+                                <span class="w-36-px h-36-px bg-base rounded-circle d-flex justify-content-center align-items-center">
+                                    <iconify-icon icon="mdi:cash-multiple" class="fs-4 text-warning"></iconify-icon>
+                                </span>
+                                <span class="text-lg fw-semibold text-primary-light">Cash on Delivery (COD)</span>
+                            </div>
+                            <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
+                                <input class="form-check-input" type="checkbox" name="cod_enabled" value="1"
+                                    {{ ($gateways->firstWhere('gateway_name', 'cod')?->is_enabled) ? 'checked' : '' }}>
+                            </div>
+                        </div>
+                        <div class="card-body p-24">
+                            <div class="row gy-3">
+                                <div class="col-12">
+                                    <p class="text-primary-light mb-0">
+                                        <strong>Note:</strong> Enable this option to allow customers to pay cash on delivery. No additional configuration needed.
+                                    </p>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
+                                        Save Changes
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+        </form>
+
+    </div>
+</div>
 
 @endsection

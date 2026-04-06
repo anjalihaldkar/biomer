@@ -1,7 +1,7 @@
-@extends('layout.userpanel')
+@extends('layout.frontlayout')
 @section('title', 'My Wishlist – Bharat Biomer')
 
-@section('panel')
+@push('styles')
 <style>
 .wl__card {
     background: #fff; border-radius: 16px; border: 1px solid #e8f0e4;
@@ -41,9 +41,20 @@
 .wl__empty { text-align: center; padding: 5rem 1rem; background: #fff; border-radius: 16px; border: 1px solid #e8f0e4; }
 .wl__empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
 </style>
+@endpush
 
-<h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Wishlist</h1>
-<p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">{{ $wishlists->count() }} saved product(s)</p>
+@section('content')
+<div class="container my-4">
+    <div class="row g-4">
+        {{-- Sidebar --}}
+        <div class="col-lg-3">
+            @include('components.customer-sidebar')
+        </div>
+
+        {{-- Main Content --}}
+        <div class="col-lg-9">
+            <h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Wishlist</h1>
+            <p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">{{ $wishlists->count() }} saved product(s)</p>
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show mb-3">
@@ -133,5 +144,7 @@ document.querySelectorAll('.add-to-cart-wl').forEach(btn => {
 });
 </script>
 @endpush
-
+        </div>
+    </div>
+</div>
 @endsection

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use App\Models\Customer;    // ✅ add this
 use App\Models\Order;       // ✅ add this
 use App\Models\Wishlist;    // ✅ add this
@@ -30,5 +31,32 @@ class CustomerDashboardController extends Controller
             'totalWishlist',
             'recentOrders'
         ));
+    }
+
+    public function account()
+    {
+        $customer = Auth::guard('customer')->user();
+        return view('my-account', compact('customer'));
+    }
+
+    public function edit()
+    {
+        $customer = Auth::guard('customer')->user();
+        return view('customer-account-edit', compact('customer'));
+    }
+
+    public function update(Request $request)
+    {
+        $customer = Auth::guard('customer')->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:customers,email,' . $customer->id,
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $customer->update($validated);
+
+        return redirect()->route('customer.account')->with('success', 'Account details updated successfully!');
     }
 }

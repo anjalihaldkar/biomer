@@ -431,7 +431,7 @@
                     </div>
                     <div class="cart__summary-row">
                         <span>Tax (GST)</span>
-                        <span>Included</span>
+                        <span id="summaryTax">{{ ($taxAmount ?? 0) > 0 ? '₹' . number_format($taxAmount, 2) : 'Included' }}</span>
                     </div>
 
                     <div class="cart__summary-row" id="discountRow" style="{{ $discount > 0 ? '' : 'display: none;' }}">
@@ -484,15 +484,6 @@
                         </div>
                         <div class="cart__trust-item">
                             <svg width="15" height="15" fill="none" stroke="#2d7a45" stroke-width="2" viewBox="0 0 24 24">
-                                <rect x="1" y="3" width="15" height="13"/>
-                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                                <circle cx="5.5" cy="18.5" r="2.5"/>
-                                <circle cx="18.5" cy="18.5" r="2.5"/>
-                            </svg>
-                            Free Shipping on All Orders
-                        </div>
-                        <div class="cart__trust-item">
-                            <svg width="15" height="15" fill="none" stroke="#2d7a45" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                                 <polyline points="22 4 12 14.01 9 11.01"/>
                             </svg>
@@ -524,6 +515,16 @@
 @push('scripts')
 <script>
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+
+function updateGlobalCartBadge(count) {
+    if (count > 0) {
+        document.querySelectorAll('.bb-cart-badge').forEach(badge => {
+            badge.textContent = count;
+        });
+    } else {
+        document.querySelectorAll('.bb-cart-badge').forEach(badge => badge.remove());
+    }
+}
 
 function formatShipping(amount) {
     return amount === '₹0.00' ? 'Free' : amount;
@@ -587,9 +588,11 @@ function sendQtyUpdate(key, index, quantity) {
             // Update summary
             document.getElementById('summarySubtotal').textContent = d.subtotal;
             document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
             document.getElementById('summaryTotal').textContent    = d.final_total;
             document.getElementById('summaryItemCount').textContent = d.cart_count;
             document.getElementById('cartCountBadge').textContent   = d.cart_count + ' item(s)';
+            updateGlobalCartBadge(d.cart_count);
             showToast('Quantity updated!', 'success');
         } else {
             showToast('Could not update. Try again.', 'error');
@@ -629,9 +632,11 @@ function removeItem(key, index) {
                 // Update summary
                 document.getElementById('summarySubtotal').textContent = d.subtotal;
                 document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+                document.getElementById('summaryTax').textContent = d.tax_amount;
                 document.getElementById('summaryTotal').textContent    = d.final_total;
                 document.getElementById('summaryItemCount').textContent = d.cart_count;
                 document.getElementById('cartCountBadge').textContent  = d.cart_count + ' item(s)';
+                updateGlobalCartBadge(d.cart_count);
                 showToast('Item removed from cart.', 'success');
                 // Reload if empty
                 if (d.empty) setTimeout(() => location.reload(), 800);
@@ -672,6 +677,7 @@ function applyCoupon() {
             document.getElementById('summaryDiscount').innerHTML = `-${d.discount} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a>`;
             document.getElementById('summarySubtotal').textContent = d.subtotal;
             document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
             document.getElementById('summaryTotal').textContent = d.final_total;
             document.getElementById('couponFormWrapper').style.display = 'none';
         } else {
@@ -700,6 +706,7 @@ function removeCoupon() {
             document.getElementById('discountRow').style.display = 'none';
             document.getElementById('summarySubtotal').textContent = d.subtotal;
             document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
             document.getElementById('summaryTotal').textContent = d.final_total;
             document.getElementById('couponFormWrapper').style.display = 'block';
             document.getElementById('couponCode').value = '';
