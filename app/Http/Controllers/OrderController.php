@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariation;
+use App\Models\PaymentGateway;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,8 @@ class OrderController extends Controller
         $totals = $this->calculateCartTotals($cart, $coupon);
 
         $customer = $this->customer();
-        return view('checkout', array_merge($totals, compact('cart', 'coupon', 'customer')));
+        $paymentGateways = PaymentGateway::getEnabled();
+        return view('checkout', array_merge($totals, compact('cart', 'coupon', 'customer', 'paymentGateways')));
     }
 
     // ── Shared: Validate & Check Stock ────────────────────────────────

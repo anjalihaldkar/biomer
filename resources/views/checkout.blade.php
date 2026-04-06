@@ -472,28 +472,19 @@
     <span class="chk__form-card-num">💳</span> Choose Payment Method
 </div>
 <div class="pay-methods">
-    <label class="pay-method-label">
-        <input type="radio" name="payment_method" value="razorpay" checked>
-        <img src="https://razorpay.com/assets/razorpay-logo-white-reverse.svg"
-             onerror="this.style.display='none'"
-             style="filter:invert(1) sepia(1) saturate(5) hue-rotate(100deg)">
-        Razorpay
-    </label>
-    <label class="pay-method-label">
-        <input type="radio" name="payment_method" value="cashfree">
-        <img src="https://cashfreelogo.cashfree.com/cashfreepayments/logosvgs/Group_4355.svg"
-             onerror="this.style.display='none'">
-        Cashfree
-    </label>
-    <label class="pay-method-label">
-        <input type="radio" name="payment_method" value="cod">
-        💵 Cash on Delivery
-    </label>
-</div>
-
-<button type="button" class="chk__place-btn" id="placeOrderBtn" onclick="startPayment()">
-    💳 Pay Now →
-</button>
+    @foreach($paymentGateways as $index => $gateway)
+        <label class="pay-method-label">
+            <input type="radio" name="payment_method" value="{{ $gateway->gateway_name }}" {{ $index == 0 ? 'checked' : '' }}>
+            @if($gateway->logo_url)
+                <img src="{{ $gateway->logo_url }}"
+                     onerror="this.style.display='none'"
+                     style="filter:invert(1) sepia(1) saturate(5) hue-rotate(100deg)">
+            @elseif($gateway->gateway_name == 'cod')
+                💵
+            @endif
+            {{ $gateway->display_name }}
+        </label>
+    @endforeach
 
 <p style="text-align:center; font-size:0.72rem; color:#9aab9a; margin-top:0.75rem; margin-bottom:0;">
     🔒 Your information is secure and encrypted
