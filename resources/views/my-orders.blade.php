@@ -1,8 +1,10 @@
-@extends('layout.userpanel')
+@extends('layout.frontlayout')
 @section('title', 'My Orders – Bharat Biomer')
 
-@section('panel')
+@push('styles')
 <style>
+* { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+
 .mo__card {
     background: #fff;
     border-radius: 16px;
@@ -95,9 +97,20 @@
     .mo__header-right { margin-left: 0; }
 }
 </style>
+@endpush
 
-<h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Orders</h1>
-<p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">Track and manage your orders</p>
+@section('content')
+<div class="container my-4">
+    <div class="row g-4">
+        {{-- Sidebar --}}
+        <div class="col-lg-3">
+            @include('components.customer-sidebar')
+        </div>
+
+        {{-- Main Content --}}
+        <div class="col-lg-9">
+            <h1 style="font-size:1.6rem; font-weight:800; color:#1a2e1a; margin-bottom:0.2rem;">My Orders</h1>
+            <p style="font-size:0.9rem; color:#6b7c6b; margin-bottom:1.75rem;">Track and manage your orders</p>
 
 @if($orders->count() > 0)
 
@@ -140,6 +153,17 @@
                 📦 {{ $order->city }}, {{ $order->state }} – {{ $order->pincode }}
             </div>
             <div class="d-flex align-items-center gap-2">
+                @if($order->canRequestReturn())
+                    <a href="{{ route('order-returns.create', $order->order_number) }}"
+                       class="mo__view-btn" style="background:#fff4e5; color:#9a5b00; border:1px solid #f3c77a;">
+                        Return Product
+                    </a>
+                @elseif($order->orderReturn)
+                    <a href="{{ route('order-returns.show', $order->orderReturn->id) }}"
+                       class="mo__view-btn" style="background:#f4faf0; color:#2d7a45; border:1px solid #a8d5b5;">
+                        Return Status
+                    </a>
+                @endif
                 <a href="{{ route('orders.invoice', $order->order_number) }}"
                    class="mo__view-btn" style="background:#1a6fa8;" target="_blank">
                     ⬇ Invoice
@@ -165,5 +189,7 @@
         <a href="{{ route('products.index') }}" class="mo__empty-btn">Browse Products</a>
     </div>
 @endif
-
+        </div>
+    </div>
+</div>
 @endsection

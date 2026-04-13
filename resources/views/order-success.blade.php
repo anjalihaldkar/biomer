@@ -294,11 +294,17 @@
                             <div style="margin-top:1rem;">
                                 <div class="suc__total-row">
                                     <span>Subtotal</span>
-                                    <span>₹{{ number_format($order->total_amount, 2) }}</span>
+                                    <span>₹{{ number_format($order->total_amount - $order->shipping_amount, 2) }}</span>
                                 </div>
                                 <div class="suc__total-row">
                                     <span>Shipping</span>
-                                    <span style="color:#2d7a45; font-weight:700;">Free</span>
+                                    <span style="color:#2d7a45; font-weight:700;">
+                                        @if($order->shipping_amount > 0)
+                                            ₹{{ number_format($order->shipping_amount, 2) }}
+                                        @else
+                                            Free
+                                        @endif
+                                    </span>
                                 </div>
                                 <div class="suc__total-row">
                                     <span>Tax (GST)</span>

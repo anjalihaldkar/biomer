@@ -278,12 +278,18 @@
                 Wishlist
             </a>
 
+            <a href="{{ route('order-returns.index') }}"
+               class="{{ request()->routeIs('order-returns.*') ? 'active' : '' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                My Returns
+            </a>
+
             <span class="db-nav-label">Account Settings</span>
 
-            <a href="{{ route('products.index') }}"
-               class="{{ request()->routeIs('profile.*') ? 'active' : '' }}">
+            <a href="{{ route('customer.account') }}"
+               class="{{ request()->routeIs('customer.account') ? 'active' : '' }}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-                Personal Info
+                My Account
             </a>
 
             <form action="{{ route('customer.logout') }}" method="POST" style="margin:0;">
@@ -303,6 +309,18 @@
     </main>
 
 </div>
+
+<footer style="background: #f4faf0; border-top: 1px solid #e8f0e4; margin-top: 40px; padding: 30px 20px;">
+    <div style="max-width: 1400px; margin: 0 auto; text-align: center; color: #6b7c6b; font-size: 14px;">
+        <p style="margin: 0 0 10px 0;">&copy; 2026 Bharat Biomer. All rights reserved.</p>
+        <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 13px;">
+            <a href="{{ url('/') }}" style="color: #2d7a45; text-decoration: none;">Home</a>
+            <a href="{{ route('products.index') }}" style="color: #2d7a45; text-decoration: none;">Products</a>
+            <a href="{{ url('/about') }}" style="color: #2d7a45; text-decoration: none;">About</a>
+            <a href="{{ url('/contact') }}" style="color: #2d7a45; text-decoration: none;">Contact</a>
+        </div>
+    </div>
+</footer>
 
 <script>
 const hamburger = document.getElementById("hamburgerBtn");

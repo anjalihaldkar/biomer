@@ -10,12 +10,15 @@ class Product extends Model
     protected $fillable = [
         'name', 'slug', 'sku', 'brand_id', 'category_id',
         'technical_content', 'description', 'short_description',
-        'base_price', 'stock_quantity', 'manage_stock', 'status',
-        'featured_image', 'video_url', 'meta_title', 'meta_description',
+        'base_price', 'unit', 'shipping_charge', 'tax_rate', 'gst_rate', 'stock_quantity', 'manage_stock', 'status',
+        'featured_image', 'video_url', 'meta_title', 'meta_description', 'meta_keyword',
     ];
 
     protected $casts = [
         'base_price'     => 'decimal:2',
+        'shipping_charge'=> 'decimal:2',
+        'tax_rate'       => 'decimal:2',
+        'gst_rate'       => 'decimal:2',
         'manage_stock'   => 'boolean',
         'stock_quantity' => 'integer',
     ];
@@ -31,7 +34,9 @@ class Product extends Model
     public function category()   { return $this->belongsTo(Category::class); }
     public function tags()       { return $this->belongsToMany(Tag::class, 'product_tag'); }
     public function images()     { return $this->hasMany(ProductImage::class)->orderBy('sort_order'); }
-    public function variations() { return $this->hasMany(ProductVariation::class); }
+    public function variations()      { return $this->hasMany(ProductVariation::class); }
+    public function reviews()           { return $this->hasMany(ProductReview::class); }
+    public function approvedReviews()   { return $this->hasMany(ProductReview::class)->where('status', 'approved'); }
 
     // ── Stock Helpers ──────────────────────────────────────
     public function isInStock(): bool
@@ -75,5 +80,15 @@ class Product extends Model
         return $min === $max
             ? '₹' . number_format($min, 2)
             : '₹' . number_format($min, 2) . ' – ₹' . number_format($max, 2);
+    }
+
+    public function getAvgRatingAttribute(): float
+    {
+        return round($this->approvedReviews()->avg('rating') ?? 0, 1);
+    }
+
+    public function getReviewCountAttribute(): int
+    {
+        return $this->approvedReviews()->count();
     }
 }

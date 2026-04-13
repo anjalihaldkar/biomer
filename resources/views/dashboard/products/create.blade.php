@@ -425,6 +425,12 @@
                                                         min="0" step="0.01">
                                                 </div>
                                                 <div class="col-6 col-md-2">
+                                                    <label class="form-label">Unit</label>
+                                                    <input type="text" name="variations[{{ $i }}][unit]"
+                                                        class="form-control" value="{{ $var->unit ?? '' }}"
+                                                        placeholder="kg, liter, etc">
+                                                </div>
+                                                <div class="col-6 col-md-2">
                                                     <label class="form-label">Stock</label>
                                                     <input type="number"
                                                         name="variations[{{ $i }}][stock_quantity]"
@@ -460,19 +466,30 @@
 
                     {{-- SEO --}}
                     <div class="card mb-4">
-                        <div class="card-header"> SEO</div>
+                        <div class="card-header">📊 SEO Settings</div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <label class="form-label">Meta Title</label>
+                                    <label class="form-label">Meta Title <span class="text-muted">(50-60 chars)</span></label>
                                     <input type="text" name="meta_title" class="form-control"
                                         value="{{ old('meta_title', $product->meta_title ?? '') }}"
-                                        placeholder="SEO page title">
+                                        placeholder="e.g., Premium Organic Bhoomi Star | Bharat Biomer"
+                                        maxlength="60">
+                                    <small class="text-muted">Used in search results and browser tabs</small>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Meta Description</label>
+                                    <label class="form-label">Meta Description <span class="text-muted">(150-160 chars)</span></label>
                                     <textarea name="meta_description" class="form-control" rows="3"
-                                        placeholder="SEO description for search engines...">{{ old('meta_description', $product->meta_description ?? '') }}</textarea>
+                                        placeholder="e.g., Discover premium Bhoomi Star for better soil health. Natural ingredients, proven results..."
+                                        maxlength="160">{{ old('meta_description', $product->meta_description ?? '') }}</textarea>
+                                    <small class="text-muted">Appears below title in search results</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Meta Keywords <span class="text-muted">(comma-separated)</span></label>
+                                    <textarea name="meta_keyword" class="form-control" rows="2"
+                                        placeholder="e.g., organic fertilizer, soil enhancement, bhoomi star, bio products, agriculture">
+{{ old('meta_keyword', $product->meta_keyword ?? '') }}</textarea>
+                                    <small class="text-muted">Separate keywords with commas. Not displayed but helps search engines.</small>
                                 </div>
                             </div>
                         </div>
@@ -498,6 +515,36 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted d-block mt-1">Each variation has its own price set above.</small>
+
+                            <label class="form-label mt-3">Default Unit <span class="text-danger">*</span></label>
+                            <input type="text" name="unit"
+                                class="form-control @error('unit') is-invalid @enderror"
+                                value="{{ old('unit', $product->unit ?? 'kg') }}"
+                                placeholder="e.g. kg, liter, piece, ton, etc" required>
+                            @error('unit')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">Example: kg, liter, piece, ton, box, etc. Each variation can have its own unit.</small>
+
+                            <label class="form-label mt-3">Shipping Charge (₹)</label>
+                            <input type="number" name="shipping_charge"
+                                class="form-control @error('shipping_charge') is-invalid @enderror"
+                                value="{{ old('shipping_charge', $product->shipping_charge ?? 0) }}"
+                                min="0" step="0.01" placeholder="0.00">
+                            @error('shipping_charge')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">Leave as 0 for free shipping, or enter the shipping charge amount.</small>
+
+                            <label class="form-label mt-3">Tax Rate (%) (GST/VAT)</label>
+                            <input type="number" name="tax_rate"
+                                class="form-control @error('tax_rate') is-invalid @enderror"
+                                value="{{ old('tax_rate', $product->tax_rate ?? 0) }}"
+                                min="0" max="100" step="0.01" placeholder="0.00">
+                            @error('tax_rate')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">e.g., 5% GST, 18% VAT. Leave as 0 for no tax.</small>
                         </div>
                     </div>
 
@@ -632,6 +679,11 @@
                 '<div class="col-6 col-md-2">' +
                     '<label class="form-label">Weight (kg)</label>' +
                     '<input type="number" name="variations[' + i + '][weight]" class="form-control" min="0" step="0.01" placeholder="5">' +
+                '</div>' +
+
+                '<div class="col-6 col-md-2">' +
+                    '<label class="form-label">Unit</label>' +
+                    '<input type="text" name="variations[' + i + '][unit]" class="form-control" placeholder="kg, liter, etc">' +
                 '</div>' +
 
                 '<div class="col-6 col-md-2">' +

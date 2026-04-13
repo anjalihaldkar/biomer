@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderFailed;
+use App\Mail\OrderSuccess;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariation;
+use App\Models\PaymentGateway;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Razorpay\Api\Api;
 use Razorpay\Api\Errors\SignatureVerificationError;
 use App\Services\ShiprocketService;
@@ -30,9 +34,13 @@ class OrderController extends Controller
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+
         $customer = $this->customer();
-        return view('checkout', compact('cart', 'total', 'customer'));
+        $paymentGateways = PaymentGateway::getEnabled();
+        return view('checkout', array_merge($totals, compact('cart', 'coupon', 'customer', 'paymentGateways')));
     }
 
     // ── Shared: Validate & Check Stock ────────────────────────────────
@@ -73,6 +81,40 @@ class OrderController extends Controller
         return null;
     }
 
+    private function calculateCartTotals(array $cart, ?array $coupon = null): array
+    {
+        $subtotal = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
+        $shippingTotal = collect($cart)->sum(fn($item) => ($item['shipping_charge'] ?? 0) * $item['quantity']);
+
+        $discount = 0;
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent'
+                ? ($subtotal * ($coupon['value'] / 100))
+                : $coupon['value'];
+        }
+
+        // Calculate tax on subtotal (after discount)
+        $taxableAmount = max(0, $subtotal - $discount);
+        $taxAmount = 0;
+        foreach ($cart as $item) {
+            $product = Product::find($item['product_id']);
+            if ($product && $product->tax_rate > 0) {
+                $itemSubtotal = $item['price'] * $item['quantity'];
+                $taxAmount += $itemSubtotal * ($product->tax_rate / 100);
+            }
+        }
+
+        $total = max(0, $subtotal - $discount) + $shippingTotal + $taxAmount;
+
+        return [
+            'subtotal' => $subtotal,
+            'shippingTotal' => $shippingTotal,
+            'taxAmount' => $taxAmount,
+            'discount' => $discount,
+            'total' => $total,
+        ];
+    }
+
     private function storeCheckoutSession(Request $request)
     {
         session()->put('checkout_data', [
@@ -94,6 +136,18 @@ class OrderController extends Controller
         DB::transaction(function () use ($checkoutData, $cart, $total, $gateway, $paymentIds, &$orderNumber) {
             $customer = $this->customer();
 
+            // Calculate shipping and tax
+            $shippingAmount = collect($cart)->sum(fn($item) => ($item['shipping_charge'] ?? 0) * $item['quantity']);
+            $subtotal = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
+            $taxAmount = 0;
+            foreach ($cart as $item) {
+                $product = Product::find($item['product_id']);
+                if ($product && $product->tax_rate > 0) {
+                    $itemSubtotal = $item['price'] * $item['quantity'];
+                    $taxAmount += $itemSubtotal * ($product->tax_rate / 100);
+                }
+            }
+
             $orderData = [
                 'customer_id' => $customer->id,
                 'order_number' => 'BB-' . strtoupper(uniqid()),
@@ -106,6 +160,8 @@ class OrderController extends Controller
                 'pincode' => $checkoutData['pincode'],
                 'notes' => $checkoutData['notes'],
                 'total_amount' => $total,
+                'shipping_amount' => $shippingAmount,
+                'tax_amount' => $taxAmount,
                 'status' => 'confirmed',
                 'payment_status' => 'paid',
                 'payment_gateway' => $gateway,
@@ -127,6 +183,7 @@ class OrderController extends Controller
                     'unit_price' => $item['price'],
                     'quantity' => $item['quantity'],
                     'subtotal' => $item['price'] * $item['quantity'],
+                    'shipping_charge' => $item['shipping_charge'] ?? 0,
                 ]);
 
                 if (!empty($item['variation_id'])) {
@@ -155,7 +212,7 @@ class OrderController extends Controller
             Log::error('Shiprocket push failed: ' . $e->getMessage());
         }
 
-        return $orderNumber;
+        return $orderNumber ?? '';
 
     }
 
@@ -172,7 +229,9 @@ class OrderController extends Controller
         if ($stockError)
             return response()->json($stockError, 422);
 
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+        $total = $totals['total'];
 
         $api = new Api(config('razorpay.key_id'), config('razorpay.key_secret'));
         $razorpayOrder = $api->order->create([
@@ -225,12 +284,22 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+        $total = $totals['total'];
 
         $orderNumber = $this->createOrderInDB($checkoutData, $cart, $total, 'razorpay', [
             'razorpay_order_id' => $request->razorpay_order_id,
             'razorpay_payment_id' => $request->razorpay_payment_id,
         ]);
+
+        // Send order success email
+        $order = Order::where('order_number', $orderNumber)->first();
+        try {
+            Mail::to($order->email)->send(new OrderSuccess($order));
+        } catch (\Exception $e) {
+            Log::error('Failed to send order success email: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true, 'redirect_url' => route('order.success', $orderNumber)]);
     }
@@ -248,7 +317,9 @@ class OrderController extends Controller
         if ($stockError)
             return response()->json($stockError, 422);
 
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+        $total = $totals['total'];
         $customer = $this->customer();
         $orderId = 'BB-' . strtoupper(uniqid());
 
@@ -319,7 +390,9 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+        $total = $totals['total'];
 
         // Get payment ID from payments list
         $paymentsRes = Http::withHeaders([
@@ -336,6 +409,14 @@ class OrderController extends Controller
             'cashfree_order_id' => $orderId,
             'cashfree_payment_id' => (string)$cfPaymentId,
         ]);
+
+        // Send order success email
+        $order = Order::where('order_number', $orderNumber)->first();
+        try {
+            Mail::to($order->email)->send(new OrderSuccess($order));
+        } catch (\Exception $e) {
+            Log::error('Failed to send order success email: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true, 'redirect_url' => route('order.success', $orderNumber)]);
     }
@@ -355,7 +436,9 @@ class OrderController extends Controller
 
         $this->storeCheckoutSession($request);
 
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+        $total = $totals['total'];
 
         $orderNumber = $this->createOrderInDB(
             session()->get('checkout_data'),
@@ -364,6 +447,14 @@ class OrderController extends Controller
             'cod',
             ['payment_status' => 'pending'] // override: COD not paid yet
         );
+
+        // Send order success email
+        $order = Order::where('order_number', $orderNumber)->first();
+        try {
+            Mail::to($order->email)->send(new OrderSuccess($order));
+        } catch (\Exception $e) {
+            Log::error('Failed to send order success email: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success'      => true,
@@ -374,6 +465,61 @@ class OrderController extends Controller
     // ── Payment Failed ─────────────────────────────────────────────────
     public function paymentFailed(Request $request)
     {
+        $checkoutData = session()->get('checkout_data');
+        $cart = session()->get('cart', []);
+
+        // Create a failed order record for tracking
+        if ($checkoutData && !empty($cart)) {
+            $coupon = session()->get('coupon');
+            $totals = $this->calculateCartTotals($cart, $coupon);
+            $total = $totals['total'];
+
+            $customer = $this->customer();
+            $order = Order::create([
+                'customer_id' => $customer->id,
+                'order_number' => 'BB-' . strtoupper(uniqid()),
+                'name' => $checkoutData['name'],
+                'phone' => $checkoutData['phone'],
+                'email' => $checkoutData['email'] ?? $customer->email,
+                'address' => $checkoutData['address'],
+                'city' => $checkoutData['city'],
+                'state' => $checkoutData['state'],
+                'pincode' => $checkoutData['pincode'],
+                'notes' => $checkoutData['notes'],
+                'total_amount' => $total,
+                'shipping_amount' => collect($cart)->sum(fn($item) => ($item['shipping_charge'] ?? 0) * $item['quantity']),
+                'status' => 'cancelled',
+                'payment_status' => 'failed',
+                'payment_gateway' => $request->input('gateway', 'unknown'),
+            ]);
+
+            // Add order items
+            foreach ($cart as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'variation_id' => $item['variation_id'] ?? null,
+                    'product_name' => $item['name'],
+                    'variation_name' => $item['variation'] ?? null,
+                    'sku' => $item['sku'] ?? null,
+                    'unit_price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $item['price'] * $item['quantity'],
+                    'shipping_charge' => $item['shipping_charge'] ?? 0,
+                ]);
+            }
+
+            // Send order failed email
+            try {
+                Mail::to($order->email)->send(new OrderFailed($order, 'Payment was cancelled or failed'));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order failed email: ' . $e->getMessage());
+            }
+
+            // Clear cart and checkout data
+            session()->forget(['cart', 'checkout_data', 'coupon']);
+        }
+
         return response()->json(['error' => 'Payment was cancelled or failed. No order has been placed.'], 400);
     }
 
@@ -390,7 +536,7 @@ class OrderController extends Controller
     // ── My Orders ──────────────────────────────────────────────────────
     public function myOrders()
     {
-        $orders = Order::with('items')
+        $orders = Order::with(['items', 'orderReturn'])
             ->where('customer_id', $this->customer()->id)
             ->latest()
             ->paginate(10);
@@ -400,7 +546,7 @@ class OrderController extends Controller
     // ── Order Detail ───────────────────────────────────────────────────
     public function show($orderNumber)
     {
-        $order = Order::with('items.product')
+        $order = Order::with(['items.product', 'orderReturn'])
             ->where('order_number', $orderNumber)
             ->where('customer_id', $this->customer()->id)
             ->firstOrFail();

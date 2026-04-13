@@ -417,19 +417,40 @@
 
                     <div class="cart__summary-row">
                         <span>Items (<span id="summaryItemCount">{{ collect($cart)->sum('quantity') }}</span>)</span>
-                        <span id="summarySubtotal">₹{{ number_format($total, 2) }}</span>
+                        <span id="summarySubtotal">₹{{ number_format($subtotal, 2) }}</span>
                     </div>
                     <div class="cart__summary-row">
                         <span>Shipping</span>
-                        <span style="color:#2d7a45; font-weight:700;">Free</span>
+                        <span id="summaryShipping" style="color:#2d7a45; font-weight:700;">
+                            @if($shippingTotal > 0)
+                                ₹{{ number_format($shippingTotal, 2) }}
+                            @else
+                                Free
+                            @endif
+                        </span>
                     </div>
                     <div class="cart__summary-row">
                         <span>Tax (GST)</span>
-                        <span>Included</span>
+                        <span id="summaryTax">{{ ($taxAmount ?? 0) > 0 ? '₹' . number_format($taxAmount, 2) : 'Included' }}</span>
                     </div>
+
+                    <div class="cart__summary-row" id="discountRow" style="{{ $discount > 0 ? '' : 'display: none;' }}">
+                        <span>Discount <span id="couponCodeBadge" class="cart__product-variant" style="font-size:0.7rem;">{{ $coupon['code'] ?? '' }}</span></span>
+                        <span id="summaryDiscount" style="color:#c0392b;">-₹{{ number_format($discount ?? 0, 2) }} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a></span>
+                    </div>
+
                     <div class="cart__summary-row total">
                         <span>Total</span>
-                        <span id="summaryTotal">₹{{ number_format($total, 2) }}</span>
+                        <span id="summaryTotal">₹{{ number_format($finalTotal ?? $total, 2) }}</span>
+                    </div>
+
+                    {{-- Coupon Input --}}
+                    <div class="mb-4" id="couponFormWrapper" style="{{ $discount > 0 ? 'display: none;' : '' }}">
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1a2e1a; margin-bottom: 0.3rem;">Have a coupon?</label>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="couponCode" class="form-control" placeholder="Enter code" style="border: 1.5px solid #e8f0e4; border-radius: 8px; font-size: 0.9rem; flex:1;">
+                            <button type="button" class="btn btn-dark" onclick="applyCoupon()" style="background:#1a2e1a; border:none; border-radius:8px; font-weight:600; font-size:0.9rem;">Apply</button>
+                        </div>
                     </div>
 
                     {{-- Checkout Button --}}
@@ -460,15 +481,6 @@
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             </svg>
                             Secure Checkout
-                        </div>
-                        <div class="cart__trust-item">
-                            <svg width="15" height="15" fill="none" stroke="#2d7a45" stroke-width="2" viewBox="0 0 24 24">
-                                <rect x="1" y="3" width="15" height="13"/>
-                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                                <circle cx="5.5" cy="18.5" r="2.5"/>
-                                <circle cx="18.5" cy="18.5" r="2.5"/>
-                            </svg>
-                            Free Shipping on All Orders
                         </div>
                         <div class="cart__trust-item">
                             <svg width="15" height="15" fill="none" stroke="#2d7a45" stroke-width="2" viewBox="0 0 24 24">
@@ -503,6 +515,20 @@
 @push('scripts')
 <script>
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+
+function updateGlobalCartBadge(count) {
+    if (count > 0) {
+        document.querySelectorAll('.bb-cart-badge').forEach(badge => {
+            badge.textContent = count;
+        });
+    } else {
+        document.querySelectorAll('.bb-cart-badge').forEach(badge => badge.remove());
+    }
+}
+
+function formatShipping(amount) {
+    return amount === '₹0.00' ? 'Free' : amount;
+}
 
 // ════════════════════════════════════════════════
 //  TOAST
@@ -560,10 +586,13 @@ function sendQtyUpdate(key, index, quantity) {
             // Update item total
             document.getElementById('itemTotal_' + index).textContent = d.item_total;
             // Update summary
-            document.getElementById('summarySubtotal').textContent = d.cart_total;
-            document.getElementById('summaryTotal').textContent    = d.cart_total;
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
+            document.getElementById('summaryTotal').textContent    = d.final_total;
             document.getElementById('summaryItemCount').textContent = d.cart_count;
             document.getElementById('cartCountBadge').textContent   = d.cart_count + ' item(s)';
+            updateGlobalCartBadge(d.cart_count);
             showToast('Quantity updated!', 'success');
         } else {
             showToast('Could not update. Try again.', 'error');
@@ -601,10 +630,13 @@ function removeItem(key, index) {
             setTimeout(() => {
                 row.remove();
                 // Update summary
-                document.getElementById('summarySubtotal').textContent = d.cart_total;
-                document.getElementById('summaryTotal').textContent    = d.cart_total;
+                document.getElementById('summarySubtotal').textContent = d.subtotal;
+                document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+                document.getElementById('summaryTax').textContent = d.tax_amount;
+                document.getElementById('summaryTotal').textContent    = d.final_total;
                 document.getElementById('summaryItemCount').textContent = d.cart_count;
                 document.getElementById('cartCountBadge').textContent  = d.cart_count + ' item(s)';
+                updateGlobalCartBadge(d.cart_count);
                 showToast('Item removed from cart.', 'success');
                 // Reload if empty
                 if (d.empty) setTimeout(() => location.reload(), 800);
@@ -618,6 +650,69 @@ function removeItem(key, index) {
         row.classList.remove('cart__row-updating');
         showToast('Network error. Try again.', 'error');
     });
+}
+
+// ════════════════════════════════════════════════
+//  APPLY COUPON
+// ════════════════════════════════════════════════
+function applyCoupon() {
+    const code = document.getElementById('couponCode').value.trim();
+    if(!code) return showToast('Please enter a coupon code.', 'error');
+    
+    fetch('{{ route("cart.coupon.apply") }}', {
+        method : 'POST',
+        headers: {
+            'Content-Type' : 'application/json',
+            'X-CSRF-TOKEN' : CSRF_TOKEN,
+            'Accept'       : 'application/json',
+        },
+        body: JSON.stringify({ code })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success) {
+            showToast(d.message, 'success');
+            document.getElementById('discountRow').style.display = 'flex';
+            document.getElementById('couponCodeBadge').textContent = code;
+            document.getElementById('summaryDiscount').innerHTML = `-${d.discount} <a href="javascript:void(0)" onclick="removeCoupon()" style="color:#c0392b; text-decoration:none; margin-left:5px;" title="Remove Coupon">✕</a>`;
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
+            document.getElementById('summaryTotal').textContent = d.final_total;
+            document.getElementById('couponFormWrapper').style.display = 'none';
+        } else {
+            showToast(d.message, 'error');
+        }
+    })
+    .catch(() => showToast('Network error.', 'error'));
+}
+
+// ════════════════════════════════════════════════
+//  REMOVE COUPON
+// ════════════════════════════════════════════════
+function removeCoupon() {
+    fetch('{{ route("cart.coupon.remove") }}', {
+        method : 'POST',
+        headers: {
+            'Content-Type' : 'application/json',
+            'X-CSRF-TOKEN' : CSRF_TOKEN,
+            'Accept'       : 'application/json',
+        }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success) {
+            showToast(d.message, 'success');
+            document.getElementById('discountRow').style.display = 'none';
+            document.getElementById('summarySubtotal').textContent = d.subtotal;
+            document.getElementById('summaryShipping').textContent = formatShipping(d.shipping_total);
+            document.getElementById('summaryTax').textContent = d.tax_amount;
+            document.getElementById('summaryTotal').textContent = d.final_total;
+            document.getElementById('couponFormWrapper').style.display = 'block';
+            document.getElementById('couponCode').value = '';
+        }
+    })
+    .catch(() => showToast('Network error.', 'error'));
 }
 </script>
 @endpush

@@ -11,6 +11,7 @@ use App\Models\ProductVariation;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -48,10 +49,14 @@ class ProductController extends Controller
             'description'       => 'nullable|string',
             'short_description' => 'nullable|string',
             'base_price'        => 'required|numeric|min:0',
+            'unit'              => 'required|string|max:50',
+            'shipping_charge'   => 'nullable|numeric|min:0',
+            'tax_rate'          => 'nullable|numeric|min:0|max:100',
             'status'            => 'required|in:active,inactive,draft',
             'video_url'         => 'nullable|url|max:500',
             'meta_title'        => 'nullable|string|max:255',
-            'meta_description'  => 'nullable|string',
+            'meta_description'  => 'nullable|string|max:500',
+            'meta_keyword'      => 'nullable|string|max:500',
             'featured_image'    => 'nullable|image|max:2048',
             'gallery.*'         => 'nullable|image|max:2048',
             'tags'              => 'nullable|array',
@@ -68,6 +73,7 @@ class ProductController extends Controller
                 $varRules["variations.{$i}.sku"]             = 'required|string|max:100|distinct|unique:product_variations,sku';
                 $varRules["variations.{$i}.price"]           = 'required|numeric|min:0';
                 $varRules["variations.{$i}.weight"]          = 'nullable|numeric|min:0';
+                $varRules["variations.{$i}.unit"]            = 'nullable|string|max:50';
                 $varRules["variations.{$i}.stock_quantity"]  = 'required|integer|min:0';
             }
             $request->validate($varRules);
@@ -95,11 +101,15 @@ class ProductController extends Controller
                     'description'       => $request->description,
                     'short_description' => $request->short_description,
                     'base_price'        => $request->base_price,
+                    'unit'              => $request->unit ?? 'kg',
+                    'shipping_charge'   => $request->shipping_charge ?? 0,
+                    'tax_rate'          => $request->tax_rate ?? 0,
                     'status'            => $request->status,
                     'featured_image'    => $featuredImagePath,
                     'video_url'         => $request->video_url,
                     'meta_title'        => $request->meta_title,
                     'meta_description'  => $request->meta_description,
+                    'meta_keyword'      => $request->meta_keyword,
                 ]);
 
                 // 3. Gallery images
@@ -138,6 +148,7 @@ class ProductController extends Controller
                             'attribute_value' => $varData['attribute_value'],
                             'price'           => $varData['price'],
                             'weight'          => $varData['weight'] ?? null,
+                            'unit'            => $varData['unit'] ?? null,
                             'stock_quantity'  => (int) $varData['stock_quantity'],
                             'is_active'       => true,
                             'image_path'      => $varImagePath,
@@ -164,13 +175,17 @@ class ProductController extends Controller
             });
 
         } catch (\Exception $e) {
-            // ── Shows the REAL error on screen instead of silent redirect ──
-            dd([
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
+            Log::error('Product creation failed', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'trace'     => $e->getTraceAsString(),
+                'request'   => $request->except(['featured_image', 'gallery', 'variations.*.image']),
             ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Unable to create product. Please try again.');
         }
 
         return redirect()->route('dashboard.products.index')
@@ -207,8 +222,14 @@ class ProductController extends Controller
             'description'       => 'nullable|string',
             'short_description' => 'nullable|string',
             'base_price'        => 'required|numeric|min:0',
+            'unit'              => 'required|string|max:50',
+            'shipping_charge'   => 'nullable|numeric|min:0',
+            'tax_rate'          => 'nullable|numeric|min:0|max:100',
             'status'            => 'required|in:active,inactive,draft',
             'video_url'         => 'nullable|url|max:500',
+            'meta_title'        => 'nullable|string|max:255',
+            'meta_description'  => 'nullable|string|max:500',
+            'meta_keyword'      => 'nullable|string|max:500',
             'featured_image'    => 'nullable|image|max:2048',
             'gallery.*'         => 'nullable|image|max:2048',
             'tags'              => 'nullable|array',
@@ -241,11 +262,15 @@ class ProductController extends Controller
                     'description'       => $request->description,
                     'short_description' => $request->short_description,
                     'base_price'        => $request->base_price,
+                    'unit'              => $request->unit ?? 'kg',
+                    'shipping_charge'   => $request->shipping_charge ?? 0,
+                    'tax_rate'          => $request->tax_rate ?? 0,
                     'status'            => $request->status,
                     'featured_image'    => $featuredImagePath,
                     'video_url'         => $request->video_url,
                     'meta_title'        => $request->meta_title,
                     'meta_description'  => $request->meta_description,
+                    'meta_keyword'      => $request->meta_keyword,
                 ]);
 
                 // 3. Gallery images
@@ -289,6 +314,7 @@ class ProductController extends Controller
                                     'attribute_value' => $varData['attribute_value'],
                                     'price'           => $varData['price'],
                                     'weight'          => $varData['weight'] ?? null,
+                                    'unit'            => $varData['unit'] ?? null,
                                     'stock_quantity'  => (int) $varData['stock_quantity'],
                                     'image_path'      => $varImagePath ?: $existing->image_path,
                                 ]);
@@ -302,6 +328,7 @@ class ProductController extends Controller
                                 'attribute_value' => $varData['attribute_value'],
                                 'price'           => $varData['price'],
                                 'weight'          => $varData['weight'] ?? null,
+                                'unit'            => $varData['unit'] ?? null,
                                 'stock_quantity'  => (int) $varData['stock_quantity'],
                                 'is_active'       => true,
                                 'image_path'      => $varImagePath,
@@ -329,12 +356,18 @@ class ProductController extends Controller
             });
 
         } catch (\Exception $e) {
-            dd([
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-                'trace'   => $e->getTraceAsString(),
+            Log::error('Product update failed', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'trace'     => $e->getTraceAsString(),
+                'product_id'=> $product->id,
+                'request'   => $request->except(['featured_image', 'gallery', 'variations.*.image']),
             ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Unable to update product. Please try again.');
         }
 
         return redirect()->route('dashboard.products.index')
@@ -377,14 +410,84 @@ class ProductController extends Controller
     }
 
     // ── Frontend: Product Listing ──────────────────────────────────────────
-public function shopIndex()
+public function shopIndex(Request $request)
 {
-    $products = Product::with(['brand', 'category', 'variations'])
-        ->where('status', 'active')
-        ->latest()
-        ->paginate(12);
+    $query = Product::with(['brand', 'category', 'variations'])
+        ->where('status', 'active');
 
-    return view('product', compact('products'));
+    // Search functionality
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('short_description', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+
+    // Category filter
+    if ($request->filled('category')) {
+        $query->where('category_id', $request->category);
+    }
+
+    // Brand filter
+    if ($request->filled('brand')) {
+        $query->where('brand_id', $request->brand);
+    }
+
+    // Price range filter
+    if ($request->filled('min_price') || $request->filled('max_price')) {
+        $query->where(function ($q) use ($request) {
+            $q->where(function ($subQ) use ($request) {
+                // Products with variations - check variation prices
+                $subQ->whereHas('variations', function ($vq) use ($request) {
+                    if ($request->filled('min_price')) {
+                        $vq->where('price', '>=', $request->min_price);
+                    }
+                    if ($request->filled('max_price')) {
+                        $vq->where('price', '<=', $request->max_price);
+                    }
+                });
+            })->orWhere(function ($subQ) use ($request) {
+                // Products without variations - check base price
+                $subQ->whereDoesntHave('variations')
+                     ->where(function ($priceQ) use ($request) {
+                         if ($request->filled('min_price')) {
+                             $priceQ->where('base_price', '>=', $request->min_price);
+                         }
+                         if ($request->filled('max_price')) {
+                             $priceQ->where('base_price', '<=', $request->max_price);
+                         }
+                     });
+            });
+        });
+    }
+
+    // Sorting
+    $sortBy = $request->get('sort', 'latest');
+    switch ($sortBy) {
+        case 'price_low':
+            $query->orderByRaw('(SELECT MIN(price) FROM product_variations WHERE product_variations.product_id = products.id) ASC, base_price ASC');
+            break;
+        case 'price_high':
+            $query->orderByRaw('(SELECT MAX(price) FROM product_variations WHERE product_variations.product_id = products.id) DESC, base_price DESC');
+            break;
+        case 'name':
+            $query->orderBy('name');
+            break;
+        case 'latest':
+        default:
+            $query->latest();
+            break;
+    }
+
+    $products = $query->paginate(12)->withQueryString();
+
+    // Get filter options
+    $categories = \App\Models\Category::orderBy('name')->get();
+    $brands = \App\Models\Brand::orderBy('name')->get();
+
+    return view('product', compact('products', 'categories', 'brands'));
 }
 
 // ── Frontend: Product Detail ───────────────────────────────────────────
@@ -400,6 +503,9 @@ public function shopShow(Product $product)
         'images',
         'variations' => function ($q) {
             $q->where('is_active', true)->orderBy('price');
+        },
+        'reviews' => function ($q) {
+            $q->with('customer')->where('status', 'approved')->latest();
         }
     ]);
 

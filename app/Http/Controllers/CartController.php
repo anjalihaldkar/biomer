@@ -11,9 +11,77 @@ class CartController extends Controller
 {
     public function index()
     {
-        $cart  = session()->get('cart', []);
-        $total = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
-        return view('cart', compact('cart', 'total'));
+        $cart = session()->get('cart', []);
+        $coupon = session()->get('coupon');
+        $totals = $this->calculateCartTotals($cart, $coupon);
+
+        return view('cart', array_merge($totals, compact('cart', 'coupon')));
+    }
+
+    public function applyCoupon(Request $request)
+    {
+        $request->validate(['code' => 'required|string']);
+        $cart = session()->get('cart', []);
+        
+        if (empty($cart)) {
+            return response()->json(['success' => false, 'message' => 'Cart is empty.']);
+        }
+
+        $coupon = \App\Models\Coupon::where('code', $request->code)->where('is_active', true)->first();
+
+        if (!$coupon) {
+            return response()->json(['success' => false, 'message' => 'Invalid or inactive coupon.']);
+        }
+
+        if ($coupon->expires_at && \Carbon\Carbon::parse($coupon->expires_at)->isPast()) {
+            return response()->json(['success' => false, 'message' => 'This coupon has expired.']);
+        }
+
+        if ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
+            return response()->json(['success' => false, 'message' => 'This coupon usage limit has been reached.']);
+        }
+
+        $totalsWithoutCoupon = $this->calculateCartTotals($cart);
+        if ($totalsWithoutCoupon['subtotal'] < $coupon->min_order_amount) {
+            return response()->json(['success' => false, 'message' => 'Minimum order amount for this coupon is ₹' . number_format($coupon->min_order_amount, 2)]);
+        }
+
+        $discount = $coupon->type === 'percent' ? ($totalsWithoutCoupon['subtotal'] * ($coupon->value / 100)) : $coupon->value;
+        session()->put('coupon', [
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'value' => $coupon->value,
+            'discount' => $discount
+        ]);
+
+        $totalsWithCoupon = $this->calculateCartTotals($cart, session()->get('coupon'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon applied successfully!',
+            'discount' => '₹' . number_format($totalsWithCoupon['discount'], 2),
+            'subtotal' => '₹' . number_format($totalsWithCoupon['subtotal'], 2),
+            'shipping_total' => '₹' . number_format($totalsWithCoupon['shippingTotal'], 2),
+            'tax_amount' => '₹' . number_format($totalsWithCoupon['taxAmount'], 2),
+            'final_total' => '₹' . number_format($totalsWithCoupon['total'], 2),
+        ]);
+    }
+
+    public function removeCoupon(Request $request)
+    {
+        session()->forget('coupon');
+        
+        $cart = session()->get('cart', []);
+        $totals = $this->calculateCartTotals($cart);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Coupon removed.',
+            'subtotal' => '₹' . number_format($totals['subtotal'], 2),
+            'shipping_total' => '₹' . number_format($totals['shippingTotal'], 2),
+            'tax_amount' => '₹' . number_format($totals['taxAmount'], 2),
+            'final_total' => '₹' . number_format($totals['total'], 2),
+        ]);
     }
 
     public function add(Request $request)
@@ -37,23 +105,27 @@ class CartController extends Controller
             $cart[$key]['quantity'] += $request->quantity ?? 1;
         } else {
             $cart[$key] = [
-                'product_id'   => $product->id,
-                'variation_id' => $variation?->id,
-                'name'         => $product->name,
-                'variation'    => $variation?->attribute_value ?? null,
-                'sku'          => $variation?->sku ?? $product->sku,
-                'price'        => $price,
-                'quantity'     => $request->quantity ?? 1,
-                'image'        => $variation?->image_path ?? $product->featured_image,
+                'product_id'     => $product->id,
+                'variation_id'   => $variation?->id,
+                'name'           => $product->name,
+                'variation'      => $variation?->attribute_value ?? null,
+                'sku'            => $variation?->sku ?? $product->sku,
+                'price'          => $price,
+                'shipping_charge'=> $product->shipping_charge ?? 0,
+                'quantity'       => $request->quantity ?? 1,
+                'image'          => $variation?->image_path ?? $product->featured_image,
             ];
         }
 
         session()->put('cart', $cart);
+        $totals = $this->calculateCartTotals($cart, session()->get('coupon'));
 
         return response()->json([
             'success'    => true,
             'message'    => $product->name . ' added to cart!',
             'cart_count' => collect($cart)->sum('quantity'),
+            'tax_amount' => '₹' . number_format($totals['taxAmount'], 2),
+            'final_total' => '₹' . number_format($totals['total'], 2),
         ]);
     }
 
@@ -72,13 +144,16 @@ class CartController extends Controller
 
             $item      = $cart[$request->key];
             $itemTotal = $item['price'] * $item['quantity'];
-            $cartTotal = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+            $totals = $this->calculateCartTotals($cart, session()->get('coupon'));
 
             return response()->json([
-                'success'    => true,
-                'item_total' => '₹' . number_format($itemTotal, 2),
-                'cart_total' => '₹' . number_format($cartTotal, 2),
-                'cart_count' => collect($cart)->sum('quantity'),
+                'success'        => true,
+                'item_total'     => '₹' . number_format($itemTotal, 2),
+                'subtotal'       => '₹' . number_format($totals['subtotal'], 2),
+                'shipping_total' => '₹' . number_format($totals['shippingTotal'], 2),
+                'tax_amount'     => '₹' . number_format($totals['taxAmount'], 2),
+                'final_total'    => '₹' . number_format($totals['total'], 2),
+                'cart_count'     => collect($cart)->sum('quantity'),
             ]);
         }
 
@@ -91,13 +166,50 @@ class CartController extends Controller
         $cart = session()->get('cart', []);
         unset($cart[$request->key]);
         session()->put('cart', $cart);
-        $cartTotal = collect($cart)->sum(fn($i) => $i['price'] * $i['quantity']);
+
+        $totals = $this->calculateCartTotals($cart, session()->get('coupon'));
+
         return response()->json([
-            'success'    => true,
-            'cart_total' => '₹' . number_format($cartTotal, 2),
-            'cart_count' => collect($cart)->sum('quantity'),
-            'empty'      => count($cart) === 0,
+            'success'        => true,
+            'subtotal'       => '₹' . number_format($totals['subtotal'], 2),
+            'shipping_total' => '₹' . number_format($totals['shippingTotal'], 2),
+            'tax_amount'     => '₹' . number_format($totals['taxAmount'], 2),
+            'final_total'    => '₹' . number_format($totals['total'], 2),
+            'cart_count'     => collect($cart)->sum('quantity'),
+            'empty'          => count($cart) === 0,
         ]);
+    }
+
+    private function calculateCartTotals(array $cart, ?array $coupon = null): array
+    {
+        $subtotal = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
+        $shippingTotal = collect($cart)->sum(fn($item) => ($item['shipping_charge'] ?? 0) * $item['quantity']);
+
+        $discount = 0;
+        if ($coupon) {
+            $discount = $coupon['type'] === 'percent'
+                ? ($subtotal * ($coupon['value'] / 100))
+                : $coupon['value'];
+        }
+
+        $taxAmount = 0;
+        foreach ($cart as $item) {
+            $product = Product::find($item['product_id']);
+            if ($product && $product->tax_rate > 0) {
+                $itemSubtotal = $item['price'] * $item['quantity'];
+                $taxAmount += $itemSubtotal * ($product->tax_rate / 100);
+            }
+        }
+
+        $total = max(0, $subtotal - $discount) + $shippingTotal + $taxAmount;
+
+        return [
+            'subtotal' => $subtotal,
+            'shippingTotal' => $shippingTotal,
+            'discount' => $discount,
+            'taxAmount' => $taxAmount,
+            'total' => $total,
+        ];
     }
 
     public function clear()
