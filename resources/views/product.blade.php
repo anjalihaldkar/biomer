@@ -157,6 +157,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 .shop__btn--primary { background: #2d7a45; color: #fff; }
@@ -348,20 +349,12 @@
   }
   </style>
 
-  <section class="prodh__section">
-    <div class="container">
-      <div class="row">
-        <div class="col-12 col-lg-8">
-          <div class="prodh__badge mb-3">
-            <img src="assets/images/flask-icon.svg" alt="flask" class="prodh__badge-icon"/>
-            <span class="prodh__badge-text">Our Product Range</span>
-          </div>
-          <h1 class="prodh__heading">Shop Bio-Stimulants & Agri Solutions</h1>
-          <p class="prodh__desc">Choose from our range of scientifically developed formulations crafted for modern farming. Trusted by farmers across India.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <x-front-breadcrumb
+    badge="Our Product Range"
+    title="Shop Bio-Stimulants & Agri Solutions"
+    description="Choose from our range of scientifically developed formulations crafted for modern farming. Trusted by farmers across India."
+    :icon="asset('assets/images/flask-icon.svg')"
+  />
 
   <section class="avan__section">
     <div class="container">
@@ -490,7 +483,7 @@
 
             <div class="shop__img-wrap">
               @if($product->featured_image)
-                <img src="{{ Storage::url($product->featured_image) }}"
+                <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
                      alt="{{ $product->name }}" class="shop__img">
               @else
                 <img src="assets/images/product-bottle.svg"
@@ -578,7 +571,8 @@
                   <button class="shop__btn shop__btn--primary add-to-cart"
                           data-id="{{ $product->id }}"
                           data-name="{{ $product->name }}">
-                    Add to Cart
+                    <i class="ri-shopping-cart-2-line" aria-hidden="true"></i>
+                    <span>Add to Cart</span>
                   </button>
                 @else
                   <button class="shop__btn shop__btn--disabled" disabled>
@@ -695,6 +689,13 @@
     });
   });
 
+  document.querySelectorAll('.shop__card').forEach(card => {
+    const firstVariation = card.querySelector('.shop__variation-btn');
+    if (firstVariation) {
+      firstVariation.click();
+    }
+  });
+
   function updateGlobalCartBadge(count) {
     if (count > 0) {
       document.querySelectorAll('.bb-cart-badge').forEach(badge => {
@@ -718,6 +719,7 @@
     btn.addEventListener('click', function () {
       const id   = this.dataset.id;
       const name = this.dataset.name;
+      const label = this.querySelector('span');
 
       fetch('/cart/add', {
         method: 'POST',
@@ -733,10 +735,14 @@
           if (d.cart_count !== undefined) {
             updateGlobalCartBadge(d.cart_count);
           }
-          this.textContent = '✓ Added!';
+          if (label) {
+            label.textContent = 'Added!';
+          }
           this.classList.add('shop__btn--added');
           setTimeout(() => {
-            this.textContent = 'Add to Cart';
+            if (label) {
+              label.textContent = 'Add to Cart';
+            }
             this.classList.remove('shop__btn--added');
           }, 2000);
         }

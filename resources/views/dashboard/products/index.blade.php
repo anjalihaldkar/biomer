@@ -27,6 +27,13 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show mx-3 mt-3 mb-0">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table bordered-table admin-data-table mb-0" data-page-length="10" data-no-sort-targets="0,1,8">
@@ -49,7 +56,7 @@
                             <td>{{ str_pad($products->firstItem() + $i, 2, '0', STR_PAD_LEFT) }}</td>
                             <td>
                                 @if($product->featured_image)
-                                    <img src="{{ Storage::url($product->featured_image) }}" alt="{{ $product->name }}" class="radius-8 border" style="width:48px;height:48px;object-fit:cover;">
+                                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}" alt="{{ $product->name }}" class="radius-8 border" style="width:48px;height:48px;object-fit:cover;">
                                 @else
                                     <div class="radius-8 bg-neutral-200 border" style="width:48px;height:48px;"></div>
                                 @endif

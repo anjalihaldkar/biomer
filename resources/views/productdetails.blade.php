@@ -12,7 +12,7 @@
   <meta property="og:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
   <meta property="og:url" content="{{ url()->current() }}">
   @if($product->featured_image)
-    <meta property="og:image" content="{{ Storage::url($product->featured_image) }}">
+    <meta property="og:image" content="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}">
   @endif
   
   {{-- Twitter Card Tags --}}
@@ -20,7 +20,7 @@
   <meta name="twitter:title" content="{{ $product->meta_title ?? $product->name }}">
   <meta name="twitter:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
   @if($product->featured_image)
-    <meta name="twitter:image" content="{{ Storage::url($product->featured_image) }}">
+    <meta name="twitter:image" content="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}">
   @endif
   
   {{-- Product Schema.org Structured Data --}}
@@ -30,7 +30,7 @@
     "@type": "Product",
     "name": "{{ $product->name }}",
     "description": "{{ $product->meta_description ?? $product->short_description ?? $product->description }}",
-    "image": "{{ $product->featured_image ? Storage::url($product->featured_image) : asset('assets/images/product-bottle.svg') }}",
+    "image": "{{ $product->featured_image ? request()->getBaseUrl() . '/storage/' . ltrim($product->featured_image, '/') : asset('assets/images/product-bottle.svg') }}",
     "brand": {
       "@type": "Brand",
       "name": "{{ $product->brand->name ?? 'Bharat Biomer' }}"
@@ -56,25 +56,12 @@
   <!-- ========================
        SECTION 1: Hero
   ======================== -->
-  <section class="prodh__section">
-    <div class="container">
-      <div class="row">
-        <div class="col-12 col-lg-8">
-
-          <div class="prodh__badge mb-3">
-            <img src="{{ asset('assets/images/flask-icon.svg') }}" alt="flask" class="prodh__badge-icon"/>
-            <span class="prodh__badge-text">
-              {{ $product->category->name ?? 'Product Details' }}
-            </span>
-          </div>
-
-          <h1 class="prodh__heading">{{ $product->name }}</h1>
-          <p class="prodh__desc">{{ $product->short_description }}</p>
-
-        </div>
-      </div>
-    </div>
-  </section>
+  <x-front-breadcrumb
+    :badge="$product->category->name ?? 'Product Details'"
+    :title="$product->name"
+    :description="$product->short_description"
+    :icon="asset('assets/images/flask-icon.svg')"
+  />
 
   <!-- ========================
        SECTION 2: Product Detail
@@ -92,7 +79,7 @@
                 {{-- Main Image --}}
                 <div class="pd__img-main-wrap">
                   @if($product->featured_image)
-                    <img src="{{ Storage::url($product->featured_image) }}"
+                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
                          alt="{{ $product->name }}"
                          class="avan__product-img"
                          id="mainImage">
@@ -108,14 +95,14 @@
                 @if($product->images->count())
                 <div class="pd__thumbs">
                   @if($product->featured_image)
-                    <img src="{{ Storage::url($product->featured_image) }}"
+                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
                          class="pd__thumb pd__thumb--active"
-                         onclick="changeImage(this, '{{ Storage::url($product->featured_image) }}')">
+                         onclick="changeImage(this, '{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}')">
                   @endif
                   @foreach($product->images as $img)
-                    <img src="{{ Storage::url($img->image_path) }}"
+                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}"
                          class="pd__thumb"
-                         onclick="changeImage(this, '{{ Storage::url($img->image_path) }}')">
+                         onclick="changeImage(this, '{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}')">
                   @endforeach
                 </div>
                 @endif
@@ -200,10 +187,10 @@
                                data-stock="{{ $var->stock_quantity }}"
                                data-value="{{ $var->attribute_value }}"
                                data-unit="{{ $var->unit ?? $product->unit }}"
-                               data-image="{{ $var->image_path ? Storage::url($var->image_path) : '' }}"
+                               data-image="{{ $var->image_path ? request()->getBaseUrl() . '/storage/' . ltrim($var->image_path, '/') : '' }}"
                                onclick="selectVariation(this)">
                             @if($var->image_path)
-                              <img src="{{ Storage::url($var->image_path) }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
+                              <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($var->image_path, '/') }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
                             @else
                               <img src="{{ asset('assets/images/product-bottle.svg') }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
                             @endif
@@ -901,6 +888,11 @@
     document.getElementById('addToCartBtn').dataset.variationId = variantId;
   }
 
+  const firstVariantCard = document.querySelector('.pd__variant-card');
+  if (firstVariantCard) {
+    selectVariation(firstVariantCard);
+  }
+
   // ── Thumbnail gallery ────────────────────────────────────────────────
   function changeImage(thumb, src) {
     document.getElementById('mainImage').src = src;
@@ -931,6 +923,7 @@
   document.getElementById('addToCartBtn').addEventListener('click', function () {
     const productId   = this.dataset.productId;
     const variationId = this.dataset.variationId || null;
+    const label = this.querySelector('span');
 
     fetch('/cart/add', {
       method: 'POST',
@@ -944,7 +937,9 @@
     .then(d => {
       if (d.success) {
         const btn = document.getElementById('addToCartBtn');
-        btn.textContent = '✓ Added to Cart!';
+        if (label) {
+          label.textContent = 'Added to Cart!';
+        }
         btn.style.background = '#4caf72';
         if (d.cart_count !== undefined) {
           updateGlobalCartBadge(d.cart_count);

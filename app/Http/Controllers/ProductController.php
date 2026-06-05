@@ -65,8 +65,8 @@ class ProductController extends Controller
             'meta_title'        => 'nullable|string|max:255',
             'meta_description'  => 'nullable|string|max:500',
             'meta_keyword'      => 'nullable|string|max:500',
-            'featured_image'    => 'nullable|image|max:2048',
-            'gallery.*'         => 'nullable|image|max:2048',
+            'featured_image'    => 'nullable|image|max:10240',
+            'gallery.*'         => 'nullable|image|max:10240',
             'tags'              => 'nullable|array',
             'tags.*'            => 'string',
         ]);
@@ -101,7 +101,7 @@ class ProductController extends Controller
                 // 2. Create product
                 $product = Product::create([
                     'name'              => $request->name,
-                    'slug'              => Str::slug($request->name),
+                    'slug'              => Product::uniqueSlug($request->name),
                     'sku'               => $request->filled('sku') ? $request->sku : null,
                     'brand_id'          => $request->brand_id,
                     'category_id'       => $request->category_id,
@@ -251,8 +251,8 @@ class ProductController extends Controller
             'meta_title'        => 'nullable|string|max:255',
             'meta_description'  => 'nullable|string|max:500',
             'meta_keyword'      => 'nullable|string|max:500',
-            'featured_image'    => 'nullable|image|max:2048',
-            'gallery.*'         => 'nullable|image|max:2048',
+            'featured_image'    => 'nullable|image|max:10240',
+            'gallery.*'         => 'nullable|image|max:10240',
             'tags'              => 'nullable|array',
             'tags.*'            => 'string',
         ]);
@@ -301,7 +301,7 @@ class ProductController extends Controller
                 // 2. Update product
                 $product->update([
                     'name'              => $request->name,
-                    'slug'              => Str::slug($request->name),
+                    'slug'              => Product::uniqueSlug($request->name, $product->id),
                     'sku'               => $request->filled('sku') ? $request->sku : null,
                     'brand_id'          => $request->brand_id,
                     'category_id'       => $request->category_id,
@@ -489,7 +489,7 @@ public function shopIndex(Request $request)
     $query = Product::with(['brand', 'category', 'variations'])
         ->withAvg('approvedReviews', 'rating')
         ->withCount('approvedReviews')
-        ->where('status', 'active');
+        ->whereIn('status', ['active', 'inactive']);
 
     // Search functionality
     if ($request->filled('search')) {
@@ -570,7 +570,7 @@ public function shopIndex(Request $request)
 // ── Frontend: Product Detail ───────────────────────────────────────────
 public function shopShow(Product $product)
 {
-    abort_if($product->status !== 'active', 404);
+    abort_if($product->status === 'draft', 404);
 
     $product->load([
         'brand',

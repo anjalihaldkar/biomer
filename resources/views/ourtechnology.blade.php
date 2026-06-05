@@ -8,16 +8,19 @@
   <!-- ========================
        SECTION 1: Our Technology
   ======================== -->
-  <section class="ourtec__hero-section">
-    <div class="container h-100">
-      <div class="row h-100 justify-content-center align-items-center">
-        <div class="col-12">
-          <h2 class="ourtec__hero-title">Our Technology</h2>
+  <x-front-breadcrumb
+    badge="Technology"
+    title="Our Technology"
+    description="PPFM - Pink Pigmented Facultative Methylotrophs Explained"
+    align="center"
+  />
+  {{--
           <p class="ourtec__hero-subtitle">PPFM – Pink Pigmented Facultative Methylotrophs Explained</p>
         </div>
       </div>
     </div>
   </section>
+  --}}
 
   <!-- ========================
        SECTION 2: What is PPFM

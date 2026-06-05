@@ -3,20 +3,12 @@
 
 @section('content')
 
-<section class="prodh__section">
-  <div class="container">
-    <div class="row">
-      <div class="col-12 col-lg-6">
-        <div class="prodh__badge mb-3">
-          <img src="{{ asset('assets/images/flask-icon.svg') }}" alt="" class="prodh__badge-icon"/>
-          <span class="prodh__badge-text">My Account</span>
-        </div>
-        <h1 class="prodh__heading">Welcome Back</h1>
-        <p class="prodh__desc">Login to track your orders and manage your account.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<x-front-breadcrumb
+  badge="My Account"
+  title="Welcome Back"
+  description="Login to track your orders and manage your account."
+  :icon="asset('assets/images/flask-icon.svg')"
+/>
 
 <section class="avan__section">
   <div class="container">

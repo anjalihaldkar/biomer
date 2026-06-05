@@ -355,12 +355,24 @@
             </nav>
             <div class="nav-actions">
                 @auth('customer')
+                    <a class="bb-cart-icon" href="{{ route('cart.index') }}" aria-label="View cart">
+                        <i class="ri-shopping-cart-2-line" aria-hidden="true"></i>
+                        @if($cartCount > 0)
+                            <span class="bb-cart-badge">{{ $cartCount }}</span>
+                        @endif
+                    </a>
                     <a class="login" href="{{ route('customer.dashboard') }}"><i class="fa fa-user-o"
                             aria-hidden="true"></i> {{ Str::limit(Auth::guard('customer')->user()->name, 12) }}</a>
                     <a class="register" href="{{ route('customer.account') }}">Account</a>
                 @else
                     <a class="login" href="{{ route('customer.login') }}"><i class="fa fa-user-o" aria-hidden="true"></i>
                         Login</a><a class="register" href="{{ route('customer.register') }}">Register</a>
+                    <a class="bb-cart-icon" href="{{ route('cart.index') }}" aria-label="View cart">
+                        <i class="ri-shopping-cart-2-line" aria-hidden="true"></i>
+                        @if($cartCount > 0)
+                            <span class="bb-cart-badge">{{ $cartCount }}</span>
+                        @endif
+                    </a>
                 @endauth
             </div>
             <button class="hamb" type="button" id="hamb"><i class="fa fa-bars" aria-hidden="true"></i></button>
@@ -381,6 +393,7 @@
                 <a href="{{ route('customer.login') }}">Login</a><a href="{{ route('customer.register') }}"
                     class="register">Register</a>
             @endauth
+            <a href="{{ route('cart.index') }}">Cart @if($cartCount > 0) ({{ $cartCount }}) @endif</a>
         </div>
     </header>
     {{-- END NAVBAR --}}
@@ -486,13 +499,20 @@
                         @endforeach
                     </div>
                 @endforeach
-                <div>
-                    <h4>CONTACT</h4><a
-                        href="tel:{{ preg_replace('/\s+/', '', $siteSettings?->phone ?? '+919876543210') }}">&#9742;
-                        {{ $siteSettings?->phone ?? '+91 98765 43210' }}</a><a
-                        href="mailto:{{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}">&#9993;
-                        {{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}</a><a>&#128205;
-                        {{ $siteSettings?->address ?? 'Bharat Biomer Pvt. Ltd., A-33, Agri Innovation Park, Nashik, Maharashtra - 422003' }}</a>
+                <div class="footer-contact">
+                    <h4>CONTACT</h4>
+                    <a class="footer-contact__item" href="tel:{{ preg_replace('/\s+/', '', $siteSettings?->phone ?? '+919876543210') }}">
+                        <i class="ri-phone-fill footer-contact__icon" aria-hidden="true"></i>
+                        <span>{{ $siteSettings?->phone ?? '+91 98765 43210' }}</span>
+                    </a>
+                    <a class="footer-contact__item" href="mailto:{{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}">
+                        <i class="ri-mail-line footer-contact__icon" aria-hidden="true"></i>
+                        <span>{{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}</span>
+                    </a>
+                    <div class="footer-contact__item footer-contact__item--address">
+                        <i class="ri-map-pin-2-fill footer-contact__icon" aria-hidden="true"></i>
+                        <span>{{ $siteSettings?->address ?? 'Bharat Biomer Pvt. Ltd., A-33, Agri Innovation Park, Nashik, Maharashtra - 422003' }}</span>
+                    </div>
                 </div>
             </div>
             <div class="copyright">

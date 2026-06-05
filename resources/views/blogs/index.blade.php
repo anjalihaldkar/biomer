@@ -8,16 +8,12 @@
  <!-- ========================
        SECTION 1: About Hero
   ======================== -->
-  <section class="abth__section">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-12 col-lg-9 text-center">
-          <h1 class="abth__heading">Blog</h1>
-          <p class="abth__desc">Read the latest insights on sustainable agriculture, soil health, and biological farming innovations.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <x-front-breadcrumb
+    badge="Blog"
+    title="Blog"
+    description="Read the latest insights on sustainable agriculture, soil health, and biological farming innovations."
+    align="center"
+  />
   {{-- End Section --}}
 <section class="py-5">
     <div class="container">

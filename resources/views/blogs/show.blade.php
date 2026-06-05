@@ -11,16 +11,19 @@
 @endphp
 
 @section('content')
-<section class="abth__section">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-9 text-center">
-                <h1 class="abth__heading">{{ $blog->title }}</h1>
+<x-front-breadcrumb
+    badge="Blog"
+    :title="$blog->title"
+    :description="'By ' . ($blog->author ?? 'Bharat Biomer') . ' - ' . $blog->created_at->format('M d, Y') . ' - ' . ($blog->reading_time ?? 5) . ' min read'"
+    align="center"
+/>
+{{-- 
                 <p class="abth__desc">By {{ $blog->author ?? 'Bharat Biomer' }} • {{ $blog->created_at->format('M d, Y') }} • {{ $blog->reading_time ?? 5 }} min read</p>
             </div>
         </div>
     </div>
 </section>
+--}}
 
 <section class="py-5">
     <div class="container">

@@ -799,6 +799,13 @@
             </div>
         @endif
 
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="alert alert-danger alert-dismissible fade show">
                 <strong>Please fix the following errors:</strong>
@@ -1036,7 +1043,7 @@
                         <div class="card-body">
                             @if (isset($product) && $product->featured_image)
                                 <div class="featured-img-wrap" id="featuredExistingWrap">
-                                    <img src="{{ Storage::url($product->featured_image) }}"
+                                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
                                         class="img-fluid rounded"
                                         style="max-height:180px;object-fit:cover;width:100%;">
                                     <button type="button" class="del-img"
@@ -1062,7 +1069,7 @@
                                 <div class="img-preview-grid mb-2" id="existingGallery">
                                     @foreach ($product->images as $img)
                                         <div class="existing-img" id="existingImg_{{ $img->id }}">
-                                            <img src="{{ Storage::url($img->image_path) }}">
+                                            <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}">
                                             <button type="button" class="del-img"
                                                 onclick="deleteImage({{ $img->id }}, this)"
                                                 title="Remove">x</button>

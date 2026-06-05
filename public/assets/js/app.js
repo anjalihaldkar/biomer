@@ -215,15 +215,13 @@ function initGsapAnimations() {
       return;
     }
 
-    gsap.set(elements, {
-      autoAlpha: 0,
+    const fromVars = {
       y: options.y ?? 32,
       transformOrigin: "50% 50%",
-      willChange: "transform, opacity",
-    });
+      willChange: options.fade === false ? "transform" : "transform, opacity",
+    };
 
-    gsap.to(elements, {
-      autoAlpha: 1,
+    const toVars = {
       y: 0,
       duration: options.duration ?? 0.9,
       ease: options.ease ?? "power3.out",
@@ -234,7 +232,15 @@ function initGsapAnimations() {
         start: options.start ?? "top 82%",
         once: true,
       },
-    });
+    };
+
+    if (options.fade !== false) {
+      fromVars.autoAlpha = 0;
+      toVars.autoAlpha = 1;
+    }
+
+    gsap.set(elements, fromVars);
+    gsap.to(elements, toVars);
   };
 
   const animateSplitHeading = (element, options = {}) => {
@@ -525,6 +531,10 @@ function initGsapAnimations() {
       .utils
       .toArray("main section img, main section iframe")
       .filter((element) => {
+        if (element.id === "mainImage" || element.classList.contains("avan__product-img")) {
+          return false;
+        }
+
         if (isHomepageElement(element)) {
           return false;
         }
@@ -541,6 +551,7 @@ function initGsapAnimations() {
     y: 30,
     duration: 0.9,
     stagger: 0.06,
+    fade: false,
   });
 
   genericImages.forEach((element) => {
@@ -575,6 +586,10 @@ function initGsapAnimations() {
         .utils
         .toArray(section.querySelectorAll("img, iframe"))
         .filter((element) => {
+          if (element.id === "mainImage" || element.classList.contains("avan__product-img")) {
+            return false;
+          }
+
           const className = element.className || "";
           const src = element.getAttribute("src") || "";
           const parentWrapper = element.closest(".bb-hero-img-wrapper, .wwd-image-wrapper");
@@ -594,11 +609,9 @@ function initGsapAnimations() {
     gsap.fromTo(
       section,
       {
-        autoAlpha: 0.88,
         y: 56,
       },
       {
-        autoAlpha: 1,
         y: 0,
         ease: "none",
         scrollTrigger: {
@@ -637,11 +650,9 @@ function initGsapAnimations() {
         element,
         {
           yPercent: 10,
-          autoAlpha: 0.45,
         },
         {
           yPercent: -6,
-          autoAlpha: 1,
           ease: "none",
           scrollTrigger: {
             trigger: section,

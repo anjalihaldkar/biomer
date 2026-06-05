@@ -8,16 +8,11 @@
   <!-- ========================
        SECTION 1: Hero - Contact Us
   ======================== -->
-  <section class="conh__section">
-    <div class="container">
-      <div class="row">
-        <div class="col-12 col-lg-8">
-          <h1 class="conh__heading">Contact Us</h1>
-          <p class="conh__desc">Let's Build Sustainable Agriculture Together</p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <x-front-breadcrumb
+    badge="Contact"
+    title="Contact Us"
+    description="Let's Build Sustainable Agriculture Together"
+  />
 
   <!-- ========================
      SECTION 2: Contact Info + Form

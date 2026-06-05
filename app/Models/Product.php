@@ -26,7 +26,34 @@ class Product extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn($m) => $m->slug ??= Str::slug($m->name));
+        static::creating(function ($model) {
+            $model->slug = static::uniqueSlug($model->slug ?: $model->name);
+        });
+
+        static::updating(function ($model) {
+            if ($model->isDirty('name') || $model->isDirty('slug')) {
+                $model->slug = static::uniqueSlug($model->slug ?: $model->name, $model->id);
+            }
+        });
+    }
+
+    public static function uniqueSlug(string $value, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($value) ?: 'product';
+        $slug = $base;
+        $counter = 2;
+
+        while (
+            static::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+                ->exists()
+        ) {
+            $slug = "{$base}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
     }
 
     // ── Relationships ──────────────────────────────────────

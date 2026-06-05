@@ -37,7 +37,7 @@ class ProductVariationController extends Controller
             'weight'          => 'nullable|numeric|min:0',
             'stock_quantity'  => 'required|integer|min:0',
             'is_default'      => 'nullable|boolean',
-            'image'           => 'nullable|image|max:2048',
+            'image'           => 'nullable|image|max:10240',
         ]);
 
         $imagePath = null;
@@ -85,7 +85,7 @@ class ProductVariationController extends Controller
             'weight'          => 'nullable|numeric|min:0',
             'stock_quantity'  => 'required|integer|min:0',
             'is_default'      => 'nullable|boolean',
-            'image'           => 'nullable|image|max:2048',
+            'image'           => 'nullable|image|max:10240',
         ]);
 
         if ($request->hasFile('image')) {

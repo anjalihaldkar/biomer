@@ -3,20 +3,12 @@
 
 @section('content')
 
-<section class="prodh__section">
-  <div class="container">
-    <div class="row">
-      <div class="col-12 col-lg-6">
-        <div class="prodh__badge mb-3">
-          <img src="{{ asset('assets/images/flask-icon.svg') }}" alt="" class="prodh__badge-icon"/>
-          <span class="prodh__badge-text">Join Us</span>
-        </div>
-        <h1 class="prodh__heading">Create Your Account</h1>
-        <p class="prodh__desc">Register to order, track deliveries and manage your account.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<x-front-breadcrumb
+  badge="Join Us"
+  title="Create Your Account"
+  description="Register to order, track deliveries and manage your account."
+  :icon="asset('assets/images/flask-icon.svg')"
+/>
 
 <section class="avan__section">
   <div class="container">
