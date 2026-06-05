@@ -16,13 +16,13 @@
                 <p class="admin-page-card__desc">Add or update your Google Analytics measurement ID. It is loaded automatically on the frontend when this field is filled.</p>
             </div>
             <div class="admin-page-card__actions">
-                <a href="{{ route('dashboard.homepage-editor.edit') }}" class="btn btn-outline-secondary">Homepage Editor</a>
+                <a href="{{ route('dashboard.home-page.edit') }}" class="btn btn-outline-secondary">Home Page</a>
                 <a href="{{ route('dashboard.site-settings.edit') }}" class="btn btn-outline-secondary">Site Settings</a>
             </div>
         </div>
 
         <div class="admin-toolbar-tabs">
-            <a href="{{ route('dashboard.homepage-editor.edit') }}" class="admin-toolbar-tabs__link">Homepage Editor</a>
+            <a href="{{ route('dashboard.home-page.edit') }}" class="admin-toolbar-tabs__link">Home Page</a>
             <a href="{{ route('dashboard.site-settings.edit') }}" class="admin-toolbar-tabs__link">Site Settings</a>
             <a href="{{ route('dashboard.google-analytics.edit') }}" class="admin-toolbar-tabs__link active">Google Analytics</a>
         </div>

@@ -3,7 +3,8 @@
 
 <head>
     @php
-        $siteSettings = \App\Models\SiteSetting::first();
+        $headerLinks = collect($headerLinks ?? []);
+        $footerLinks = collect($footerLinks ?? []);
     @endphp
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,15 +34,18 @@
     {{-- Bootstrap 5 CSS --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-    {{-- Google Fonts - Poppins --}}
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    {{-- Google Fonts --}}
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Poppins:wght@400;600;700;800;900&display=swap"
+        rel="stylesheet" />
 
     {{-- Main Stylesheet --}}
     <link rel="stylesheet" href="{{ asset('assets/css/frontcss/style.css') }}?v={{ filemtime(public_path('assets/css/frontcss/style.css')) }}" />
-    <link rel="preload" as="image" href="{{ asset('assets/bharat-biomer/bblogo.webp') }}" />
+    <link rel="preload" as="image" href="{{ $siteSettings?->logo_url ?? asset('assets/bharat-biomer/bblogo.webp') }}" />
 
     {{-- Remixicon Icon Library --}}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.0.1/remixicon.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
 
     {{-- Page-specific styles --}}
     @stack('styles')
@@ -265,28 +269,29 @@
 
     .bb-footer-socials {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         margin-top: 18px;
         flex-wrap: wrap;
     }
 
     .bb-footer-social {
-        width: 40px;
-        height: 40px;
+        width: 34px;
+        height: 34px;
         border-radius: 50%;
-        background: #edf6e8;
-        color: #2d7a45;
+        border: 1px solid rgba(255, 255, 255, .24);
+        background: transparent;
+        color: #d5e8d2;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
-        transition: transform .2s ease, background .2s ease;
+        transition: transform .2s ease, border-color .2s ease, color .2s ease;
     }
 
     .bb-footer-social:hover {
         transform: translateY(-2px);
-        background: #dff0d6;
-        color: #245e36;
+        border-color: rgba(255, 255, 255, .58);
+        color: #fff;
     }
 
     .bb-audience-card {
@@ -323,7 +328,7 @@
 
     <div id="bb-preloader" class="bb-preloader">
         <div class="bb-preloader-inner">
-            <img src="{{ asset('assets/images/home-img/bb logo.png') }}" alt="Bharat Biomer" class="bb-preloader-logo" />
+            <img src="{{ $siteSettings?->preloader_logo_url ?? asset('assets/images/home-img/bb logo.png') }}" alt="{{ $siteSettings?->site_name ?? 'Bharat Biomer' }}" class="bb-preloader-logo" />
             <div class="bb-preloader-ring" aria-hidden="true"></div>
         </div>
     </div>
@@ -333,111 +338,48 @@
     ═══════════════════════════ --}}
     @php
         $cartCount = collect(session('cart', []))->sum('quantity');
-        $headerLinks = \App\Models\HeaderLink::getActive();
     @endphp
-    <header class="bb-main-header">
-        <div class="container bb-main-nav">
-            <a class="bb-main-logo" href="{{ url('/') }}">
-                <img src="{{ asset('assets/bharat-biomer/bblogo.webp') }}" alt="Bharat Biomer Logo" loading="eager" fetchpriority="high" />
-            </a>
-
-            <nav class="bb-main-links" aria-label="Primary navigation">
-                @foreach ($headerLinks as $link)
-                    @php
-                        $isTechnologyLink = str_contains(strtolower($link->label), 'technology') || str_contains(strtolower($link->url), 'technology');
-                    @endphp
-                    @if ($isTechnologyLink)
-                        <div class="bb-main-dropdown">
-                            <a href="{{ $link->url }}" target="{{ $link->target }}">
-                                @if ($link->icon)
-                                    <iconify-icon icon="{{ $link->icon }}"></iconify-icon>
-                                @endif
-                                {{ $link->label }}
-                                <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
-                            </a>
-                            <div class="bb-main-dropdown-menu">
-                                <a href="{{ url('/technology#technology-crop') }}">Crop</a>
-                                <a href="{{ url('/technology#technology-solution') }}">Solution</a>
-                            </div>
-                        </div>
-                    @else
-                        <a href="{{ $link->url }}" target="{{ $link->target }}">
-                            @if ($link->icon)
-                                <iconify-icon icon="{{ $link->icon }}"></iconify-icon>
-                            @endif
-                            {{ $link->label }}
-                        </a>
-                    @endif
+    <header>
+        <div class="wrap nav">
+            <a class="logo" href="{{ url('/') }}"><img src="{{ $siteSettings?->logo_url ?? asset('assets/bharat-biomer/bblogo.webp') }}"
+                    alt="{{ $siteSettings?->site_name ?? 'Bharat Biomer' }}" /></a>
+            <nav class="links">
+                @foreach($headerLinks as $link)
+                    <a href="{{ $link->href }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
+                        @if($link->icon)
+                            <iconify-icon icon="{{ $link->icon }}" class="icon"></iconify-icon>
+                        @endif
+                        {{ $link->label }}
+                    </a>
                 @endforeach
             </nav>
-
-            <div class="bb-main-actions">
-                <a href="{{ route('cart.index') }}" class="bb-main-icon-btn" aria-label="Cart">
-                    <img src="{{ asset('assets/images/trolley.png') }}" alt="">
-                    @if ($cartCount > 0)
-                        <span class="bb-cart-badge">{{ $cartCount }}</span>
-                    @endif
-                </a>
-
-                <a href="{{ route('wishlist.index') }}" class="bb-main-icon-btn" aria-label="Wishlist">
-                    <img src="{{ asset('assets/images/love.png') }}" alt="">
-                    @auth('customer')
-                        @php $wlCount = Auth::guard('customer')->user()->wishlists()->count(); @endphp
-                        @if ($wlCount > 0)
-                            <span id="wishlist-count" class="bb-main-badge bb-main-badge--danger">{{ $wlCount }}</span>
-                        @endif
-                    @endauth
-                </a>
-
+            <div class="nav-actions">
                 @auth('customer')
-                    <div class="dropdown">
-                        <button class="bb-main-register dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="ri-user-3-line" aria-hidden="true"></i>
-                            <span>{{ Str::limit(Auth::guard('customer')->user()->name, 12) }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end bb-main-account-menu">
-                            <li><a class="dropdown-item" href="{{ route('customer.dashboard') }}">Dashboard</a></li>
-                            <li><a class="dropdown-item" href="{{ route('orders.index') }}">My Orders</a></li>
-                            <li><a class="dropdown-item" href="{{ route('order-returns.index') }}">My Returns</a></li>
-                            <li><a class="dropdown-item" href="{{ route('wishlist.index') }}">Wishlist</a></li>
-                            <li><a class="dropdown-item" href="{{ route('customer.account') }}">My Account</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form action="{{ route('customer.logout') }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item bb-main-logout">Logout</button>
-                                </form>
-                            </li>
-                        </ul>
-                    </div>
+                    <a class="login" href="{{ route('customer.dashboard') }}"><i class="fa fa-user-o"
+                            aria-hidden="true"></i> {{ Str::limit(Auth::guard('customer')->user()->name, 12) }}</a>
+                    <a class="register" href="{{ route('customer.account') }}">Account</a>
                 @else
-                    <a class="bb-main-login" href="{{ route('customer.login') }}"><i class="ri-user-3-line" aria-hidden="true"></i> Login</a>
-                    <a class="bb-main-register" href="{{ route('customer.register') }}">Register</a>
+                    <a class="login" href="{{ route('customer.login') }}"><i class="fa fa-user-o" aria-hidden="true"></i>
+                        Login</a><a class="register" href="{{ route('customer.register') }}">Register</a>
                 @endauth
             </div>
-
-            <button class="bb-main-hamb" type="button" id="bbHeaderToggle" aria-label="Toggle navigation" aria-controls="bbMobilePanel" aria-expanded="false">
-                <i class="ri-menu-line" aria-hidden="true"></i>
-            </button>
+            <button class="hamb" type="button" id="hamb"><i class="fa fa-bars" aria-hidden="true"></i></button>
         </div>
-
-        <div class="bb-main-mobile-panel" id="bbMobilePanel">
-            @foreach ($headerLinks as $link)
-                <a href="{{ $link->url }}" target="{{ $link->target }}">{{ $link->label }}</a>
+        <div class="mobile-panel" id="mobilePanel">
+            @foreach($headerLinks as $link)
+                <a href="{{ $link->href }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
+                    @if($link->icon)
+                        <iconify-icon icon="{{ $link->icon }}" class="icon"></iconify-icon>
+                    @endif
+                    {{ $link->label }}
+                </a>
             @endforeach
-            <a href="{{ route('cart.index') }}">Cart @if($cartCount > 0)<span>{{ $cartCount }}</span>@endif</a>
-            <a href="{{ route('wishlist.index') }}">Wishlist</a>
             @auth('customer')
-                <a href="{{ route('customer.dashboard') }}">Dashboard</a>
-                <a href="{{ route('orders.index') }}">My Orders</a>
-                <a href="{{ route('customer.account') }}">My Account</a>
-                <form action="{{ route('customer.logout') }}" method="POST">
-                    @csrf
-                    <button type="submit">Logout</button>
-                </form>
+                <a href="{{ route('customer.dashboard') }}">Dashboard</a><a href="{{ route('customer.account') }}"
+                    class="register">Account</a>
             @else
-                <a href="{{ route('customer.login') }}">Login</a>
-                <a href="{{ route('customer.register') }}" class="bb-main-mobile-register">Register</a>
+                <a href="{{ route('customer.login') }}">Login</a><a href="{{ route('customer.register') }}"
+                    class="register">Register</a>
             @endauth
         </div>
     </header>
@@ -522,79 +464,43 @@
     {{-- ═══════════════════════════
          FOOTER
     ═══════════════════════════ --}}
-    <footer class="site-footer" id="footer">
-        <div class="container">
-            <div class="row g-4">
-
-                {{-- Footer Brand Section --}}
-                <div class="col-12 col-md-4 col-lg-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="footer-logo-icon">
-                            @if ($siteSettings && $siteSettings->footer_logo_path)
-                                <img src="{{ asset('storage/' . $siteSettings->footer_logo_path) }}"
-                                    alt="{{ $siteSettings->site_name ?? 'Bharat Biomer' }}" height="40" />
-                            @else
-                                <img src="{{ asset('assets/images/footer-logo.svg') }}" alt="Bharat Biomer"
-                                    height="40" />
-                            @endif
-                        </div>
-                    </div>
-                    <p class="footer-brand-tagline">
-                        {{ $siteSettings->tagline ?? 'Advanced biological solutions for sustainable farming.' }}</p>
-                    <div class="bb-footer-socials">
-                        @if($siteSettings?->facebook_url)
-                            <a class="bb-footer-social" href="{{ $siteSettings->facebook_url }}" target="_blank" rel="noopener"><i class="ri-facebook-fill"></i></a>
-                        @endif
-                        @if($siteSettings?->instagram_url)
-                            <a class="bb-footer-social" href="{{ $siteSettings->instagram_url }}" target="_blank" rel="noopener"><i class="ri-instagram-line"></i></a>
-                        @endif
-                        @if($siteSettings?->twitter_url)
-                            <a class="bb-footer-social" href="{{ $siteSettings->twitter_url }}" target="_blank" rel="noopener"><i class="ri-twitter-x-line"></i></a>
-                        @endif
-                        @if($siteSettings?->linkedin_url)
-                            <a class="bb-footer-social" href="{{ $siteSettings->linkedin_url }}" target="_blank" rel="noopener"><i class="ri-linkedin-fill"></i></a>
-                        @endif
-                    </div>
+    <footer class="footer" id="contact">
+        <div class="wrap">
+            <div class="footer-grid">
+                <div><a class="logo" style="color:#fff;font-size:21px" href="{{ url('/') }}"><img
+                            src="{{ $siteSettings?->footer_logo_url ?? asset('assets/bharat-biomer/footer-logo.svg') }}" alt="{{ $siteSettings?->site_name ?? 'Bharat Biomer' }}" /></a>
+                    <p style="margin-top:14px">Nature-powered biological solutions for sustainable and productive
+                        farming.</p>
+                    <div class="social"><a href="{{ $siteSettings?->facebook_url ?: '#' }}">f</a><a
+                            href="{{ $siteSettings?->instagram_url ?: '#' }}">&#9678;</a><a
+                            href="{{ $siteSettings?->twitter_url ?: '#' }}">&#9654;</a><a
+                            href="{{ $siteSettings?->linkedin_url ?: '#' }}">in</a></div>
                 </div>
-                {{-- Static policy links --}}
-                <div class="col-6 col-md-3 col-lg-3">
-                    <p class="footer-col-title">Policies</p>
-                    <a href="{{ route('policy.terms') }}" class="footer-link">Terms & Conditions</a>
-                    <a href="{{ route('policy.privacy') }}" class="footer-link">Privacy Policy</a>
-                    <a href="{{ route('policy.shipping') }}" class="footer-link">Shipping Policy</a>
-                    <a href="{{ route('policy.return') }}" class="footer-link">Return Policy</a>
-                </div>
-                {{-- Dynamic Footer Links Sections (Column-wise) --}}
-                @php
-                    $footerSections = \App\Models\FooterLink::selectRaw('DISTINCT section')
-                        ->where('is_active', true)
-                        ->orderBy('section')
-                        ->pluck('section');
-                @endphp
-
-                @foreach ($footerSections as $section)
-                    <div class="col-6 col-md-3 col-lg-3">
-                        <p class="footer-col-title">{{ $section }}</p>
-                        @php
-                            $sectionLinks = \App\Models\FooterLink::where('section', $section)
-                                ->where('is_active', true)
-                                ->orderBy('position')
-                                ->get();
-                        @endphp
-                        @foreach ($sectionLinks as $link)
-                            <a href="{{ $link->url }}" class="footer-link"
-                                target="{{ $link->target }}">{{ $link->label }}</a>
+                @foreach($footerLinks as $section => $links)
+                    <div>
+                        <h4>{{ strtoupper($section) }}</h4>
+                        @foreach($links as $link)
+                            <a href="{{ $link->href }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
+                                {{ $link->label }}
+                            </a>
                         @endforeach
                     </div>
                 @endforeach
-
-                
-
+                <div>
+                    <h4>CONTACT</h4><a
+                        href="tel:{{ preg_replace('/\s+/', '', $siteSettings?->phone ?? '+919876543210') }}">&#9742;
+                        {{ $siteSettings?->phone ?? '+91 98765 43210' }}</a><a
+                        href="mailto:{{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}">&#9993;
+                        {{ $siteSettings?->email ?? 'info@bharatbiomer.com' }}</a><a>&#128205;
+                        {{ $siteSettings?->address ?? 'Bharat Biomer Pvt. Ltd., A-33, Agri Innovation Park, Nashik, Maharashtra - 422003' }}</a>
+                </div>
             </div>
-
-            <hr class="footer-divider" />
-            <div class="footer-bottom">
-                {{ $siteSettings->footer_text ?? '© ' . date('Y') . ' Bharat Biomer. All rights reserved.' }}
+            <div class="copyright">
+                @if($siteSettings?->footer_text)
+                    {{ $siteSettings->footer_text }}
+                @else
+                    &copy; {{ date('Y') }} Bharat Biomer. All rights reserved.
+                @endif
             </div>
         </div>
     </footer>
@@ -689,8 +595,8 @@
         });
 
         document.addEventListener('DOMContentLoaded', function () {
-            var headerToggle = document.getElementById('bbHeaderToggle');
-            var mobilePanel = document.getElementById('bbMobilePanel');
+            var headerToggle = document.getElementById('hamb');
+            var mobilePanel = document.getElementById('mobilePanel');
             if (headerToggle && mobilePanel) {
                 headerToggle.addEventListener('click', function () {
                     var isOpen = mobilePanel.classList.toggle('open');

@@ -49,7 +49,7 @@ Route::view('/impact', 'fieldresult');
 Route::view('/contact', 'contact');
 Route::view('/bharat-biomer', 'bharat-biomer')->name('bharat-biomer');
 
-Route::get('/', fn() => view('index'));
+Route::get('/', fn() => view('bharat-biomer'));
 Route::get('/products', [ProductController::class , 'shopIndex'])->name('products.index');
 Route::get('/products/{product:slug}', [ProductController::class , 'shopShow'])->name('products.show');
 
@@ -293,7 +293,7 @@ Route::middleware(['admin.auth'])->group(function () {
         }
         );
         Route::get('/dashboard/invoices', [InvoiceController::class , 'index'])->name('dashboard.invoices.index');
-        // Admin invoice � inside middleware(['admin.auth']) group
+        // Admin invoice inside middleware(['admin.auth']) group
         Route::get(
             '/dashboard/orders/{orderNumber}/invoice',
             [InvoiceController::class , 'downloadAdmin']
@@ -427,10 +427,10 @@ Route::middleware(['admin.auth'])->group(function () {
                 ]);
 
                 // Site Settings (Settings → Site Settings)
+                Route::get('home-page', [\App\Http\Controllers\Admin\HomePageSettingController::class, 'edit'])->name('dashboard.home-page.edit');
+                Route::post('home-page', [\App\Http\Controllers\Admin\HomePageSettingController::class, 'update'])->name('dashboard.home-page.update');
                 Route::get('site-settings', [\App\Http\Controllers\Admin\SiteSettingController::class, 'edit'])->name('dashboard.site-settings.edit');
                 Route::post('site-settings', [\App\Http\Controllers\Admin\SiteSettingController::class, 'update'])->name('dashboard.site-settings.update');
-                Route::get('homepage-editor', [\App\Http\Controllers\Admin\SiteSettingController::class, 'editHomepage'])->name('dashboard.homepage-editor.edit');
-                Route::post('homepage-editor', [\App\Http\Controllers\Admin\SiteSettingController::class, 'updateHomepage'])->name('dashboard.homepage-editor.update');
                 Route::get('google-analytics', [\App\Http\Controllers\Admin\SiteSettingController::class, 'editAnalytics'])->name('dashboard.google-analytics.edit');
                 Route::post('google-analytics', [\App\Http\Controllers\Admin\SiteSettingController::class, 'updateAnalytics'])->name('dashboard.google-analytics.update');
 

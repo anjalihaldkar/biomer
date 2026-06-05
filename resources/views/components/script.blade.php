@@ -13,7 +13,7 @@
             'dashboard.invoices.index'
         );
         $needsDatePicker = request()->routeIs('calendar', 'form*', 'dashboard.orders.*', 'dashboard.analytics');
-        $needsMediaUi = request()->routeIs('gallery', 'carousel', 'videos', 'dashboard.homepage-editor.*');
+        $needsMediaUi = request()->routeIs('gallery', 'carousel', 'videos');
     @endphp
     @if($needsCharts)
         <script src="{{ asset('assets/js/lib/apexcharts.min.js') }}"></script>

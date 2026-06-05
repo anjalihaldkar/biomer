@@ -173,8 +173,8 @@
                 </a>
                 <ul class="sidebar-submenu">
                     <li>
-                        <a href="{{ route('dashboard.homepage-editor.edit') }}"><i
-                                class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Homepage Editor</a>
+                        <a href="{{ route('dashboard.home-page.edit') }}"><i
+                                class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Home Page</a>
                     </li>
                     <li>
                         <a href="{{ route('dashboard.site-settings.edit') }}"><i

@@ -1,19 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layout.frontlayout')
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bharat Biomer | Nature-powered Biological Solutions</title>
-    <meta name="description"
-        content="Responsive homepage concept for Bharat Biomer - biological farming solutions for better yield, crop health and soil vitality." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <style>
+@section('title', 'Bharat Biomer | Nature-powered Biological Solutions')
+@section('seo_description', 'Biological farming solutions for better yield, crop health, and soil vitality.')
+
+@push('styles')
+<style>
         :root {
             --green-950: #052e16;
             --green-900: #064018;
@@ -101,7 +92,7 @@
             line-height: 1.65
         }
 
-        .btn {
+        .bb-home-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -115,24 +106,24 @@
             white-space: nowrap
         }
 
-        .btn.primary {
+        .bb-home-btn.primary {
             background: linear-gradient(135deg, var(--green-800), var(--green-600));
             color: #fff;
             box-shadow: 0 12px 24px rgba(19, 114, 54, .22)
         }
 
-        .btn.primary:hover {
+        .bb-home-btn.primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 18px 36px rgba(19, 114, 54, .28)
         }
 
-        .btn.secondary {
+        .bb-home-btn.secondary {
             background: #fff;
             color: var(--green-800);
             border: 1px solid #c9dcc6
         }
 
-        .btn.yellow {
+        .bb-home-btn.yellow {
             background: var(--yellow);
             color: #17310f
         }
@@ -288,7 +279,9 @@
             position: relative;
             min-height: 505px;
             display: grid;
-            place-items: center
+            place-items: center;
+            overflow: visible;
+            transform: translateZ(0)
         }
 
         .sun {
@@ -476,7 +469,9 @@
             font-weight: 900;
             display: flex;
             align-items: center;
-            gap: 12px
+            gap: 12px;
+            transform: translate3d(0, 0, 0);
+            will-change: transform
         }
 
         .float svg {
@@ -501,36 +496,60 @@
         }
 
         .petal {
+            --petal-rotate: 0deg;
             position: absolute;
             width: 24px;
             height: 42px;
             border-radius: 80% 0 80% 0;
             background: rgba(98, 169, 52, .24);
-            animation: drift 7s infinite ease-in-out
+            opacity: .85;
+            transform: translate3d(0, 0, 0) rotate(var(--petal-rotate));
+            transform-origin: 50% 70%;
+            animation: drift 7s infinite ease-in-out;
+            will-change: transform, opacity
         }
 
         .p1 {
             top: 90px;
             left: 18%;
-            transform: rotate(20deg)
+            --petal-rotate: 20deg
         }
 
         .p2 {
             top: 190px;
             left: 50%;
+            --petal-rotate: -10deg;
             animation-delay: 1s
         }
 
         .p3 {
             bottom: 120px;
             left: 8%;
+            --petal-rotate: 28deg;
             animation-delay: 2s
         }
 
         @keyframes drift {
+            0%,
+            100% {
+                transform: translate3d(0, 0, 0) rotate(var(--petal-rotate));
+                opacity: .85
+            }
+
             50% {
-                transform: translateY(-18px) rotate(35deg);
+                transform: translate3d(0, -18px, 0) rotate(calc(var(--petal-rotate) + 15deg));
                 opacity: .55
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .petal {
+                animation: none;
+            }
+
+            .bb-home-btn,
+            .bb-home-btn.primary {
+                transition: none;
             }
         }
 
@@ -1038,6 +1057,7 @@
             border-radius: 0;
             box-shadow: none;
             z-index: 0;
+            pointer-events: none;
         }
 
         .stat i img {
@@ -1051,7 +1071,9 @@
         .producthero {
             position: relative;
             z-index: 1;
+            width: min(480px, 82vw);
             max-width: 480px;
+            transform: translate3d(0, 0, 0)
         }
 
         .hero-badges .float img {
@@ -1243,16 +1265,15 @@
                 justify-content: flex-start
             }
 
-            .btn {
+            .bb-home-btn {
                 width: 100%;
                 padding: 15px 18px
             }
 
             .hero-art {
-                min-height: 435px;
-                transform: scale(.9);
-                transform-origin: top center;
-                margin-bottom: -40px
+                min-height: 430px;
+                transform: translateZ(0);
+                margin-bottom: 0
             }
 
             .farmer {
@@ -1291,12 +1312,13 @@
                 top: auto !important;
                 width: calc(50% - 8px);
                 font-size: 12px;
-                padding: 10px
+                padding: 10px;
+                transform: translate3d(0, 0, 0)
             }
 
             .hero-badges {
                 position: absolute;
-                bottom: 4px;
+                bottom: 0;
                 left: 0;
                 right: 0;
                 display: flex;
@@ -1353,7 +1375,8 @@
                 right: 50%;
                 transform: translateX(50%);
                 width: 220px;
-                height: 185px
+                height: 185px;
+                pointer-events: none
             }
 
             .footer {
@@ -1379,10 +1402,10 @@
             }
 
             .hero-art {
-                transform: scale(.82);
-                margin-left: -8%;
-                margin-right: -8%;
-                min-height: 405px
+                transform: translateZ(0);
+                margin-left: 0;
+                margin-right: 0;
+                min-height: 390px
             }
 
             .cycle-row {
@@ -1421,37 +1444,22 @@
                 top: 80px
             }
         }
-    </style>
-</head>
+</style>
+@endpush
 
-<body>
-    <header>
-        <div class="wrap nav">
-            <a class="logo" href="{{ url('/') }}"><img src="{{ asset('assets/bharat-biomer/bblogo.webp') }}"
-                    alt="logo" /></a>
-            <nav class="links"><a href="#products">Products <i class="fa fa-chevron-down" aria-hidden="true"></i>
-                </a><a href="#technology">Technology</a><a href="#crops">Crops</a><a href="#about">About</a><a
-                    href="#stories">Blog</a><a href="#contact">Contact</a></nav>
-            <div class="nav-actions"><a class="login" href="#"><i class="fa fa-user-o" aria-hidden="true"></i>
-                    Login</a><a class="register" href="#">Register</a></div>
-            <button class="hamb" id="hamb"><i class="fa fa-bars" aria-hidden="true"></i></button>
-        </div>
-        <div class="mobile-panel" id="mobilePanel"><a href="#products">Products</a><a
-                href="#technology">Technology</a><a href="#crops">Crops</a><a href="#about">About</a><a
-                href="#stories">Blog</a><a href="#contact">Contact</a><a href="#">Login</a><a href="#"
-                class="register">Register</a></div>
-    </header>
+@php
+    $homePageConfig = \App\Models\HomePageSetting::currentMerged();
+@endphp
 
-    <main>
+@section('content')
         <section class="hero">
             <div class="wrap hero-grid">
                 <div class="hero-copy">
-                    <!-- <span class="eyebrow">🌱 Science-backed bio inputs for Indian farms</span> -->
                     <h1><span>Nature-powered</span> biological solutions for better crop yield</h1>
                     <p>Bharat Biomer helps farmers improve crop health, soil vitality, nutrient uptake and farm
                         productivity using science-backed biological inputs.</p>
-                    <div class="hero-ctas"><a class="btn primary" href="#products">Explore Products <i
-                                class="fa fa-long-arrow-right" aria-hidden="true"></i></a><a class="btn secondary"
+                    <div class="hero-ctas"><a class="bb-home-btn primary" href="#products">Explore Products <i
+                                class="fa fa-long-arrow-right" aria-hidden="true"></i></a><a class="bb-home-btn secondary"
                             href="#finder"><i class="fa fa-pagelines" aria-hidden="true"></i> Find Crop Solution</a>
                     </div>
                 </div>
@@ -1478,39 +1486,19 @@
 
         <section class="section problem">
             <div class="wrap">
-                <h2 class="title">Farming today needs more than fertilizers</h2>
-                <p class="sub">Modern farmers face multiple crop and soil challenges every season.</p>
+                <h2 class="title">{{ $homePageConfig['problem_heading'] }}</h2>
+                <p class="sub">{{ $homePageConfig['problem_paragraph'] }}</p>
                 <div class="grid-5">
-                    <div class="card problem-card">
-                        <div class="icon"><img src="{{ asset('assets/bharat-biomer/plant.png') }}" alt="icon" />
+                    @foreach($homePageConfig['problem_items'] as $item)
+                        <div class="card problem-card">
+                            <div class="icon">
+                                <img src="{{ \App\Models\HomePageSetting::imageUrl($item['image_path'] ?? '') }}"
+                                    alt="{{ $item['heading'] ?? 'Challenge icon' }}" />
+                            </div>
+                            <h3>{{ $item['heading'] }}</h3>
+                            <p>{{ $item['paragraph'] }}</p>
                         </div>
-                        <h3>Soil degradation</h3>
-                        <p>Continuous farming reduces soil organic matter and health.</p>
-                    </div>
-                    <div class="card problem-card">
-                        <div class="icon"><img src="{{ asset('assets/bharat-biomer/root.png') }}" alt="icon" />
-                        </div>
-                        <h3>Weak root development</h3>
-                        <p>Poor root growth limits nutrient and water absorption.</p>
-                    </div>
-                    <div class="card problem-card">
-                        <div class="icon"><img src="{{ asset('assets/bharat-biomer/npk.png') }}" alt="icon" />
-                        </div>
-                        <h3>Nutrient inefficiency</h3>
-                        <p>Nutrients are not utilized effectively by the crop.</p>
-                    </div>
-                    <div class="card problem-card">
-                        <div class="icon"><img src="{{ asset('assets/bharat-biomer/pest.png') }}"
-                                alt="icon" /></div>
-                        <h3>Pest and stress impact</h3>
-                        <p>Pests, diseases and climate stress reduce crop potential.</p>
-                    </div>
-                    <div class="card problem-card">
-                        <div class="icon"><img src="{{ asset('assets/bharat-biomer/plant-1.png') }}"
-                                alt="icon" /></div>
-                        <h3>Lower yield and quality</h3>
-                        <p>All these factors lead to low productivity and poor produce quality.</p>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </section>
@@ -1612,7 +1600,7 @@
 
         <section class="section" id="finder">
             <div class="wrap finder-grid">
-                <div class="card finder"><span class="eyebrow">🌿 Crop Solution Finder</span>
+                <div class="card finder"><span class="eyebrow">Crop Solution Finder</span>
                     <h2>Find recommended solutions for your crop</h2>
                     <p>Select your crop and get recommended solutions designed for better performance.</p>
                     <label><strong>Choose crop</strong><select class="select" id="cropSelect">
@@ -1621,7 +1609,7 @@
                             <option>Cotton</option>
                             <option>Soybean</option>
                             <option>Paddy</option>
-                        </select></label><button class="btn primary">View Recommended Solution <i
+                        </select></label><button class="bb-home-btn primary">View Recommended Solution <i
                             class="fa fa-long-arrow-right" aria-hidden="true"></i></button>
                     <p><small>Personalized solutions based on crop needs and growth stage.</small></p>
                 </div>
@@ -1731,7 +1719,7 @@
                         <p>Our partner sharing growth journey with Bharat Biomer.</p>
                     </article>
                 </div>
-                <div style="text-align:center;margin-top:28px"><a class="btn secondary" href="#">View More
+                <div style="text-align:center;margin-top:28px"><a class="bb-home-btn secondary" href="#">View More
                         Stories <i class="fa fa-long-arrow-right" aria-hidden="true"></i></a></div>
             </div>
         </section>
@@ -1741,51 +1729,20 @@
                 <div class="partner-box"
                     style="background-image: url('{{ asset('assets/bharat-biomer/footerfarmer.jpg') }}'); background-size: cover; background-position: 50% 20%;">
                     <h2>Grow with us as a <span>channel partner</span></h2>
-                    <p>Join our growing network of distributors and agri-partners. Let’s grow together for a sustainable
+                    <p>Join our growing network of distributors and agri-partners. Let's grow together for a sustainable
                         tomorrow.</p>
-                    <div class="partner-ctas"><a class="btn yellow" href="#">Become a Distributor <i
-                                class="fa fa-long-arrow-right" aria-hidden="true"></i></a><a class="btn secondary"
+                    <div class="partner-ctas"><a class="bb-home-btn yellow" href="#">Become a Distributor <i
+                                class="fa fa-long-arrow-right" aria-hidden="true"></i></a><a class="bb-home-btn secondary"
                             href="#">Talk to Sales <i class="fa fa-mobile" aria-hidden="true"></i></a></div>
                     <div class="handshake"></div>
                 </div>
             </div>
         </section>
-    </main>
+    
+@endsection
 
-    <footer class="footer" id="contact">
-        <div class="wrap">
-            <div class="footer-grid">
-                <div><a class="logo" style="color:#fff;font-size:21px" href="#"><img
-                            src="{{ asset('assets/bharat-biomer/footer-logo.svg') }}" alt="logo" /></a>
-                    <p style="margin-top:14px">Nature-powered biological solutions for sustainable and productive
-                        farming.</p>
-                    <div class="social"><a>f</a><a>◎</a><a>▶</a><a>in</a></div>
-                </div>
-                <div>
-                    <h4>PRODUCTS</h4><a>Bio-Stimulants</a><a>Microbial Solutions</a><a>Crop Nutrition
-                        Support</a><a>Residue-free Farming</a><a>All Products</a>
-                </div>
-                <div>
-                    <h4>CROPS</h4><a>Wheat</a><a>Paddy</a><a>Cotton</a><a>Soybean</a><a>All Crops</a>
-                </div>
-                <div>
-                    <h4>COMPANY</h4><a>About Us</a><a>Our Technology</a><a>Our Team</a><a>Career</a><a>News & Media</a>
-                </div>
-                <div>
-                    <h4>POLICIES</h4><a>Privacy Policy</a><a>Terms & Conditions</a><a>Refund Policy</a><a>Shipping
-                        Policy</a>
-                </div>
-                <div>
-                    <h4>CONTACT</h4><a>☎ +91 98765 43210</a><a>✉ info@bharatbiomer.com</a><a>📍 Bharat Biomer Pvt.
-                        Ltd.<br>A-33, Agri Innovation Park,<br>Nashik, Maharashtra - 422003</a>
-                </div>
-            </div>
-            <div class="copyright">© 2026 Bharat Biomer. All rights reserved.</div>
-        </div>
-    </footer>
-    <script>
-        const panel = document.getElementById('mobilePanel');
-        document.getElementById('hamb').addEventListener('click', () => panel.classList.toggle('open'));
+@push('scripts')
+<script>
         const data = {
             Wheat: ['Bio-Root Plus|Enhances root growth and nutrient uptake for stronger plants.',
                 'BB Micro Boost|Improves soil health and nutrient availability naturally.',
@@ -1813,15 +1770,19 @@
             list = document.getElementById('recList');
 
         function render() {
+            if (!crop || !title || !list) return;
+
             title.textContent = 'Recommended for ' + crop.value;
             list.innerHTML = data[crop.value].map(x => {
                 const [a, b] = x.split('|');
                 return `<div class="rec"><div class="mini-product">BB</div><div><strong>${a}</strong><small>${b}</small><a href="#">View Details <i class="fa fa-long-arrow-right" aria-hidden="true"></i></a></div></div>`
             }).join('')
         }
-        crop.addEventListener('change', render);
+        if (crop) {
+            crop.addEventListener('change', render);
+        }
         render();
     </script>
-</body>
+@endpush
 
-</html>
+

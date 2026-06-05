@@ -19,8 +19,8 @@
             'dashboard.invoices.index'
         );
         $needsDatePicker = request()->routeIs('calendar', 'form*', 'dashboard.orders.*', 'dashboard.analytics');
-        $needsEditor = request()->routeIs('addBlog', 'editBlog', 'dashboard.pages.*', 'dashboard.homepage-editor.*');
-        $needsMediaUi = request()->routeIs('gallery', 'carousel', 'videos', 'dashboard.homepage-editor.*');
+        $needsEditor = request()->routeIs('addBlog', 'editBlog', 'dashboard.pages.*');
+        $needsMediaUi = request()->routeIs('gallery', 'carousel', 'videos');
     @endphp
     @if($needsCharts)
         <link rel="stylesheet" href="{{ asset('assets/css/lib/apexcharts.css') }}">
