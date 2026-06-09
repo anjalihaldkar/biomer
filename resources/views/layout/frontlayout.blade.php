@@ -343,7 +343,7 @@
     }
 </style>
 
-<body>
+<body class="@yield('body_class')">
 
     <div id="bb-preloader" class="bb-preloader">
         <div class="bb-preloader-inner">

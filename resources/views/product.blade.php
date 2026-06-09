@@ -1,6 +1,8 @@
 @extends('layout.frontlayout')
 @section('title', 'Shop – Bharat Biomer Products')
 
+@section('body_class', 'shop-page no-product-motion')
+
 @section('content')
   {{-- Additional Styles for Filters --}}
   <x-front-breadcrumb

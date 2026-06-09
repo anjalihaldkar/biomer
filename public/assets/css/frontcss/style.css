@@ -7481,6 +7481,17 @@ font-family: var(--bb-font-display);
     flex-direction: column;
 }
 .shop__card:hover { box-shadow: none; }
+body.no-product-motion .avan__section,
+body.no-product-motion .avan__section *,
+body.no-product-motion .shop__card,
+body.no-product-motion .shop__card *,
+body.no-product-motion .shop__filters-card,
+body.no-product-motion .shop__filters-card * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    scroll-behavior: auto !important;
+}
 .shop__img-wrap {
     position: relative;
     background: #f4faf0;

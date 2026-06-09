@@ -80,6 +80,10 @@ $('#selectAll').on('change', function () {
 })(window.jQuery);
 
 function initGsapAnimations() {
+  if (document.body && document.body.classList.contains("no-product-motion")) {
+    return;
+  }
+
   const hasGsap = typeof window.gsap !== "undefined";
   const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
