@@ -12169,6 +12169,7 @@ div.dt-container .dt-paging .dt-paging-button:hover:hover, div.dt-container .dt-
   align-items: center;
   font-size: 1.25rem;
   color: var(--text-secondary-light);
+  pointer-events: none;
 }
 
 .icon-field .form-control {

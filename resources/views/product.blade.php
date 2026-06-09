@@ -27,13 +27,15 @@
         </div>
       </div>
 
-      {{-- Search and Filter Bar --}}
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="shop__filters-card">
+      <div class="row g-4 align-items-start">
+        <div class="col-12 col-lg-3">
+          <div class="shop__filters-card shop__filters-card--sidebar">
+            <div class="shop__filters-header">
+              <h4 class="shop__filters-title">Filters</h4>
+              <a href="{{ route('products.index') }}" class="shop__filters-reset">Reset</a>
+            </div>
             <form method="GET" action="{{ route('products.index') }}" id="filterForm">
 
-              {{-- Search Bar --}}
               <div class="shop__search-row">
                 <div class="shop__search-group">
                   <i class="ri-search-line shop__search-icon"></i>
@@ -48,7 +50,6 @@
                 </a>
               </div>
 
-              {{-- Filters Row --}}
               <div class="shop__filters-row">
                 <div class="shop__filter-group">
                   <label class="shop__filter-label">Category</label>
@@ -105,24 +106,24 @@
             </form>
           </div>
         </div>
-      </div>
 
-      {{-- Results Info --}}
-      @if(request()->hasAny(['search', 'category', 'brand', 'min_price', 'max_price']))
-        <div class="row mb-3">
-          <div class="col-12">
-            <div class="shop__results-info">
-              <i class="ri-information-line"></i>
-              Showing {{ $products->count() }} of {{ $products->total() }} products
-              @if(request('search'))
-                for "<strong>{{ request('search') }}</strong>"
-              @endif
+        <div class="col-12 col-lg-9">
+          {{-- Results Info --}}
+          @if(request()->hasAny(['search', 'category', 'brand', 'min_price', 'max_price']))
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="shop__results-info">
+                  <i class="ri-information-line"></i>
+                  Showing {{ $products->count() }} of {{ $products->total() }} products
+                  @if(request('search'))
+                    for "<strong>{{ request('search') }}</strong>"
+                  @endif
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      @endif
+          @endif
 
-      <div class="row g-4">
+          <div class="row g-4">
 
         @php
           // ✅ Get wishlist product IDs for logged in customer
@@ -134,15 +135,18 @@
         @endphp
 
         @forelse($products as $product)
+        @php
+          $visibleVariations = $product->variations->where('is_active', true);
+        @endphp
         <div class="col-12 col-sm-6 col-lg-4">
           <div class="shop__card">
 
             <div class="shop__img-wrap">
               @if($product->featured_image)
-                <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
+                <img src="{{ asset('storage/' . ltrim($product->featured_image, '/')) }}"
                      alt="{{ $product->name }}" class="shop__img">
               @else
-                <img src="assets/images/product-bottle.svg"
+                <img src="{{ asset('assets/images/product-bottle.svg') }}"
                      alt="{{ $product->name }}" class="shop__img">
               @endif
 
@@ -156,10 +160,11 @@
               {{-- ✅ Heart Wishlist Button --}}
               @auth('customer')
               @php $isWishlisted = in_array($product->id, $wishlistIds); @endphp
-              <button class="shop__wishlist-btn wishlist-toggle {{ $isWishlisted ? 'wishlisted' : '' }}"
+              <button type="button"
+                      class="shop__wishlist-btn wishlist-toggle {{ $isWishlisted ? 'wishlisted' : '' }}"
                       data-id="{{ $product->id }}"
                       title="{{ $isWishlisted ? 'Remove from wishlist' : 'Add to wishlist' }}">
-                  {{ $isWishlisted ? '❤️' : '🤍' }}
+                  <i class="{{ $isWishlisted ? 'ri-heart-fill' : 'ri-heart-line' }}" aria-hidden="true"></i>
               </button>
               @endauth
 
@@ -168,7 +173,7 @@
               <a href="{{ route('customer.login') }}"
                  class="shop__wishlist-btn"
                  title="Login to add to wishlist">
-                  🤍
+                  <i class="ri-heart-line" aria-hidden="true"></i>
               </a>
               @endguest
 
@@ -191,14 +196,14 @@
                 <p class="shop__desc">{{ Str::limit($product->short_description, 80) }}</p>
               @endif
 
-              @if($product->variations->count())
+              @if($visibleVariations->count())
                 <div class="shop__price-row">
                   <span class="shop__price-label">Price</span>
                   <span class="shop__price">₹{{ number_format($product->base_price, 2) }}</span>
                   <span class="shop__price-label shop__price-unit">/ {{ $product->unit ?? 'unit' }}</span>
                 </div>
                 <div class="shop__variation-row">
-                  @foreach($product->variations->where('is_active', true) as $var)
+                  @foreach($visibleVariations as $var)
                     <button type="button"
                             class="shop__variation-btn"
                             data-product-id="{{ $product->id }}"
@@ -210,7 +215,7 @@
                     </button>
                   @endforeach
                 </div>
-                <p class="shop__variants">{{ $product->variations->count() }} pack size(s) available</p>
+                <p class="shop__variants">{{ $visibleVariations->count() }} pack size(s) available</p>
               @else
                 <div class="shop__price-row">
                   <span class="shop__price">₹{{ number_format($product->base_price, 2) }}</span>
@@ -247,15 +252,17 @@
         </div>
         @endforelse
 
-      </div>
-
-      @if($products->hasPages())
-        <div class="row mt-5">
-          <div class="col-12 d-flex justify-content-center">
-            {{ $products->links() }}
           </div>
+
+          @if($products->hasPages())
+            <div class="row mt-5">
+              <div class="col-12 d-flex justify-content-center">
+                {{ $products->links() }}
+              </div>
+            </div>
+          @endif
         </div>
-      @endif
+      </div>
 
     </div>
   </section>
@@ -317,3 +324,4 @@
   </section>
 
 @endsection
+

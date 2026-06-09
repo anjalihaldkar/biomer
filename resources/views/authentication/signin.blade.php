@@ -71,7 +71,7 @@
         </script>';
 @endphp
 
-<x-script />
+<x-script :script="$script" />
 
 </body>
 

@@ -767,23 +767,47 @@
     });
 
     productSection.querySelectorAll(".wishlist-toggle").forEach(function (button) {
-        button.addEventListener("click", function () {
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+
             var self = this;
+            var originalText = self.textContent;
+
+            self.disabled = true;
+            self.setAttribute("aria-busy", "true");
 
             fetch(productSection.dataset.wishlistToggleUrl, {
                 method: "POST",
+                credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": csrfToken
+                    "Accept": "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest"
                 },
                 body: JSON.stringify({ product_id: this.dataset.id })
             })
                 .then(function (response) {
-                    return response.json();
+                    if (response.status === 401 || response.redirected) {
+                        window.location.href = "/customer/login";
+                        return null;
+                    }
+
+                    return response.json().then(function (data) {
+                        if (!response.ok) {
+                            throw new Error(data.message || "Could not update wishlist.");
+                        }
+
+                        return data;
+                    });
                 })
                 .then(function (data) {
+                    if (!data) return;
+
                     if (data.success) {
-                        self.textContent = data.wishlisted ? "\u2764\ufe0f" : "\ud83e\udd0d";
+                        self.innerHTML = data.wishlisted
+                            ? '<i class="ri-heart-fill" aria-hidden="true"></i>'
+                            : '<i class="ri-heart-line" aria-hidden="true"></i>';
                         self.title = data.wishlisted ? "Remove from wishlist" : "Add to wishlist";
 
                         if (data.wishlisted) {
@@ -799,8 +823,13 @@
                         }
                     }
                 })
-                .catch(function () {
-                    alert("Could not update wishlist. Please try again.");
+                .catch(function (error) {
+                    self.textContent = originalText;
+                    alert(error.message || "Could not update wishlist. Please try again.");
+                })
+                .finally(function () {
+                    self.disabled = false;
+                    self.removeAttribute("aria-busy");
                 });
         });
     });
