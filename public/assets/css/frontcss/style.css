@@ -3781,6 +3781,17 @@ font-family: var(--bb-font-display);
   border-color: #194E20;
 }
 
+.conif__input.is-invalid,
+.conif__textarea.is-invalid {
+  border-color: #dc3545;
+}
+
+.conif__field-wrap .invalid-feedback {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: #dc3545;
+}
+
 .conif__submit-btn {
   width: 100%;
   height: 52px;

@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\AudiencePreferenceController as AdminAudiencePref
 use App\Http\Controllers\Admin\PageController as AdminPageController;
 use App\Http\Controllers\Admin\TaxController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ContactController;
 
 // ══════════════════════════════════════════════════════════════════════
 //  PUBLIC FRONTEND ROUTES
@@ -46,7 +47,8 @@ Route::view('/technology', 'ourtechnology');
 Route::view('/about', 'about');
 Route::view('/collaboration', 'ourcollaboration');
 Route::view('/impact', 'fieldresult');
-Route::view('/contact', 'contact');
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contact.store');
 Route::view('/bharat-biomer', 'bharat-biomer')->name('bharat-biomer');
 
 Route::get('/', fn() => view('bharat-biomer'));

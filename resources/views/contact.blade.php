@@ -74,31 +74,80 @@
 
       <!-- Right: Contact Form -->
       <div class="col-12 col-lg-6">
-        <div class="conif__form-card">
+        <form class="conif__form-card" action="{{ route('contact.store') }}" method="POST" novalidate>
+          @csrf
           <h3 class="conif__form-title">Send us a Message</h3>
 
           <div class="conif__field-wrap">
-            <label class="conif__label">Full Name</label>
-            <input type="text" class="conif__input" placeholder="Enter your name"/>
+            <label for="contact_name" class="conif__label">Full Name</label>
+            <input
+              id="contact_name"
+              type="text"
+              name="name"
+              class="conif__input @error('name') is-invalid @enderror"
+              value="{{ old('name') }}"
+              placeholder="Enter your name"
+              required
+              minlength="2"
+              maxlength="100"
+            />
+            @error('name')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
           </div>
 
           <div class="conif__field-wrap">
-            <label class="conif__label">Email Address</label>
-            <input type="email" class="conif__input" placeholder="Enter your email"/>
+            <label for="contact_email" class="conif__label">Email Address</label>
+            <input
+              id="contact_email"
+              type="email"
+              name="email"
+              class="conif__input @error('email') is-invalid @enderror"
+              value="{{ old('email') }}"
+              placeholder="Enter your email"
+              required
+              maxlength="150"
+            />
+            @error('email')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
           </div>
 
           <div class="conif__field-wrap">
-            <label class="conif__label">Phone Number</label>
-            <input type="tel" class="conif__input" placeholder="Enter your phone"/>
+            <label for="contact_phone" class="conif__label">Phone Number</label>
+            <input
+              id="contact_phone"
+              type="tel"
+              name="phone"
+              class="conif__input @error('phone') is-invalid @enderror"
+              value="{{ old('phone') }}"
+              placeholder="Enter your phone"
+              required
+              maxlength="20"
+            />
+            @error('phone')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
           </div>
 
           <div class="conif__field-wrap">
-            <label class="conif__label">Message</label>
-            <textarea class="conif__textarea" placeholder="Write your message here..."></textarea>
+            <label for="contact_message" class="conif__label">Message</label>
+            <textarea
+              id="contact_message"
+              name="message"
+              class="conif__textarea @error('message') is-invalid @enderror"
+              placeholder="Write your message here..."
+              required
+              minlength="10"
+              maxlength="1000"
+            >{{ old('message') }}</textarea>
+            @error('message')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
           </div>
 
-          <button class="conif__submit-btn">Send Message</button>
-        </div>
+          <button type="submit" class="conif__submit-btn">Send Message</button>
+        </form>
       </div>
 
     </div>

@@ -544,6 +544,7 @@
 
     {{-- Main JS --}}
     <script src="{{ asset('assets/js/app.js') }}"></script>
+    <script src="{{ asset('assets/js/frontend.js') }}?v={{ filemtime(public_path('assets/js/frontend.js')) }}"></script>
 
     {{-- Page-specific scripts --}}
     @stack('scripts')

@@ -2,7 +2,7 @@
 @section('title', 'My Wishlist – Bharat Biomer')
 
 @section('content')
-<div class="container my-4">
+<div class="container my-4 wl-page" data-cart-add-url="{{ route('cart.add') }}">
     <div class="row g-4">
         {{-- Sidebar --}}
         <div class="col-lg-3">
@@ -76,35 +76,6 @@
 </div>
 @endif
 
-@push('scripts')
-<script>
-document.querySelectorAll('.add-to-cart-wl').forEach(btn => {
-    btn.addEventListener('click', function () {
-        const id   = this.dataset.id;
-        const name = this.dataset.name;
-        fetch('/cart/add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({ product_id: id, quantity: 1 })
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) {
-                this.textContent = '✓ Added!';
-                this.classList.add('wl__btn--added');
-                setTimeout(() => {
-                    this.textContent = 'Add to Cart';
-                    this.classList.remove('wl__btn--added');
-                }, 2000);
-            }
-        });
-    });
-});
-</script>
-@endpush
         </div>
     </div>
 </div>

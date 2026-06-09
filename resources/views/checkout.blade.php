@@ -2,7 +2,12 @@
 @section('title', 'Checkout – Bharat Biomer')
 
 @section('content')
-<section class="chk__section">
+<section class="chk__section"
+         data-cashfree-environment="{{ config('cashfree.environment', 'sandbox') }}"
+         data-order-razorpay-url="{{ route('order.razorpay') }}"
+         data-order-payment-success-url="{{ route('order.payment.success') }}"
+         data-order-cashfree-url="{{ route('order.cashfree') }}"
+         data-order-cod-url="{{ route('order.cod') }}">
     <div class="container">
 
         {{-- Back --}}
@@ -261,159 +266,5 @@
 @push('scripts')
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
-<script>
-const cashfree = Cashfree({ mode: "{{ config('cashfree.environment', 'sandbox') }}" });
-
-function getSelectedGateway() {
-    return document.querySelector('input[name="payment_method"]:checked')?.value || 'razorpay';
-}
-
-function startPayment() {
-    const btn  = document.getElementById('placeOrderBtn');
-    const form = document.getElementById('checkoutForm');
-
-    if (!form.checkValidity()) { form.reportValidity(); return; }
-
-    btn.disabled    = true;
-        btn.querySelector('span').textContent = 'Processing...';
-    const gateway = getSelectedGateway();
-
-    if (gateway === 'cod') {
-        startCodPayment(btn, form);
-    } else if (gateway === 'cashfree') {
-        startCashfreePayment(btn, form);
-    } else {
-        startRazorpayPayment(btn, form);
-    }
-}
-
-// ── RAZORPAY ──────────────────────────────────────────────────────────
-function startRazorpayPayment(btn, form) {
-    const formData = new FormData(form);
-
-    fetch('{{ route("order.razorpay") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json',
-        },
-        body: formData,
-    })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
-    .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.error || data.message || 'Something went wrong.');
-
-        const options = {
-            key:         data.key_id,
-            amount:      data.amount,
-            currency:    data.currency,
-            name:        'Bharat Biomer',
-            description: 'Order Payment',
-            order_id:    data.razorpay_order_id,
-            prefill:     { name: data.name, email: data.email, contact: data.phone },
-            theme:       { color: '#2d7a45' },
-            handler: function (response) {
-                btn.querySelector('span').textContent = 'Verifying Payment...';
-                fetch('{{ route("order.payment.success") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        razorpay_order_id:   response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature:  response.razorpay_signature,
-                    }),
-                })
-                .then(res => res.json().then(data => ({ ok: res.ok, data })))
-                .then(({ ok, data }) => {
-                    if (ok && data.redirect_url) window.location.href = data.redirect_url;
-                    else throw new Error(data.error || 'Payment verification failed.');
-                })
-                .catch(err => { alert(err.message); resetBtn(btn); });
-            },
-            modal: { ondismiss: () => resetBtn(btn) }
-        };
-
-        const rzp = new Razorpay(options);
-        rzp.on('payment.failed', r => { alert('Payment failed: ' + r.error.description); resetBtn(btn); });
-        rzp.open();
-    })
-    .catch(err => { alert(err.message); resetBtn(btn); });
-}
-
-// ── CASHFREE ──────────────────────────────────────────────────────────
-function startCashfreePayment(btn, form) {
-    const formData = new FormData(form);
-
-    fetch('{{ route("order.cashfree") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json',
-        },
-        body: formData,
-    })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
-    .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.error || 'Something went wrong.');
-
-        if (!data.payment_session_id) {
-            throw new Error('Cashfree session was not created. Please check the server logs.');
-        }
-
-        btn.querySelector('span').textContent = 'Opening Payment...';
-
-        cashfree.checkout({
-            paymentSessionId: data.payment_session_id,
-            redirectTarget:   "_self",   // opens in same tab; Cashfree redirects back to return_url
-        });
-    })
-    .catch(err => { alert(err.message); resetBtn(btn); });
-}
-
-// ── COD ───────────────────────────────────────────────────────────────
-function startCodPayment(btn, form) {
-    if (!confirm('Place order with Cash on Delivery? You will pay when the order is delivered.')) {
-        resetBtn(btn);
-        return;
-    }
-
-    const formData = new FormData(form);
-
-    fetch('{{ route("order.cod") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json',
-        },
-        body: formData,
-    })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
-    .then(({ ok, data }) => {
-        if (ok && data.redirect_url) {
-            window.location.href = data.redirect_url;
-        } else {
-            let msg = data.error || data.message || 'Something went wrong.';
-            if (data.errors) {
-                // Combine all Laravel validation errors into one string
-                msg = Object.values(data.errors).flat().join('\n');
-            }
-            throw new Error(msg);
-        }
-    })
-    .catch(err => { alert(err.message); resetBtn(btn); });
-}
-
-function resetBtn(btn) {
-    btn.disabled = false;
-    const label = btn.querySelector('span');
-    if (label) {
-        label.textContent = 'Pay Now';
-    }
-}
-</script>
 @endpush
 
