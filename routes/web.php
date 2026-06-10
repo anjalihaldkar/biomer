@@ -246,6 +246,7 @@ Route::middleware(['admin.auth'])->group(function () {
             Route::get('/notification-alert', 'notificationAlert')->name('notificationAlert');
             Route::get('/payment-gateway', 'paymentGateway')->name('paymentGateway');
             Route::post('/payment-gateway', 'updatePaymentGateway')->name('paymentGateway.update');
+            Route::post('/payment-gateway/status', 'updatePaymentGatewayStatus')->name('paymentGateway.status');
             Route::get('/theme', 'theme')->name('theme');
         }
         );

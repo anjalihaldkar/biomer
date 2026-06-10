@@ -48,7 +48,9 @@ class OrderController extends Controller
 
         $customer = $this->customer();
         $paymentGateways = PaymentGateway::getEnabled();
-        return view('checkout', array_merge($totals, compact('cart', 'coupon', 'customer', 'paymentGateways')));
+        $cashfreeGateway = $paymentGateways->firstWhere('gateway_name', 'cashfree');
+
+        return view('checkout', array_merge($totals, compact('cart', 'coupon', 'customer', 'paymentGateways', 'cashfreeGateway')));
     }
 
     // ── Shared: Validate & Check Stock ────────────────────────────────
@@ -92,6 +94,31 @@ class OrderController extends Controller
     private function calculateCartTotals(array $cart, ?array $coupon = null): array
     {
         return $this->pricing->calculate($cart, $coupon);
+    }
+
+    private function enabledGateway(string $gatewayName): ?PaymentGateway
+    {
+        return PaymentGateway::where('gateway_name', $gatewayName)
+            ->where('is_enabled', true)
+            ->first();
+    }
+
+    private function cashfreeBaseUrl(PaymentGateway $gateway): string
+    {
+        return $gateway->environment === 'production'
+            ? 'https://api.cashfree.com/pg'
+            : 'https://sandbox.cashfree.com/pg';
+    }
+
+    private function cashfreeRequest(PaymentGateway $gateway)
+    {
+        return Http::withOptions([
+            'proxy' => '',
+        ])->timeout(30)->connectTimeout(10)->withHeaders([
+            'x-client-id' => $gateway->api_key,
+            'x-client-secret' => $gateway->secret_key,
+            'x-api-version' => '2023-08-01',
+        ]);
     }
 
     private function storeCheckoutSession(Request $request)
@@ -288,6 +315,15 @@ class OrderController extends Controller
     // ── RAZORPAY: Step 1 — Create Order ───────────────────────────────
     public function createRazorpayOrder(Request $request)
     {
+        $gateway = $this->enabledGateway('razorpay');
+        if (!$gateway) {
+            return response()->json(['error' => 'Razorpay is disabled. Please select an enabled payment method.'], 422);
+        }
+
+        if (empty($gateway->api_key) || empty($gateway->secret_key)) {
+            return response()->json(['error' => 'Razorpay credentials are not configured in Payment Gateway settings.'], 500);
+        }
+
         $this->validateCheckoutRequest($request);
 
         $cart = session()->get('cart', []);
@@ -302,7 +338,7 @@ class OrderController extends Controller
         $totals = $this->calculateCartTotals($cart, $coupon);
         $total = $totals['total'];
 
-        $api = new Api(config('razorpay.key_id'), config('razorpay.key_secret'));
+        $api = new Api($gateway->api_key, $gateway->secret_key);
         $razorpayOrder = $api->order->create([
             'receipt' => 'BB-' . strtoupper(uniqid()),
             'amount' => (int)round($total * 100),
@@ -317,7 +353,7 @@ class OrderController extends Controller
             'razorpay_order_id' => $razorpayOrder->id,
             'amount' => (int)round($total * 100),
             'currency' => 'INR',
-            'key_id' => config('razorpay.key_id'),
+            'key_id' => $gateway->api_key,
             'name' => $customer->name,
             'email' => $customer->email,
             'phone' => $customer->phone ?? $request->phone,
@@ -327,13 +363,18 @@ class OrderController extends Controller
     // ── RAZORPAY: Step 2 — Verify & Save Order ────────────────────────
     public function paymentSuccess(Request $request)
     {
+        $gateway = $this->enabledGateway('razorpay');
+        if (!$gateway) {
+            return response()->json(['error' => 'Razorpay is disabled. Please select an enabled payment method.'], 422);
+        }
+
         $request->validate([
             'razorpay_order_id' => 'required|string',
             'razorpay_payment_id' => 'required|string',
             'razorpay_signature' => 'required|string',
         ]);
 
-        $api = new Api(config('razorpay.key_id'), config('razorpay.key_secret'));
+        $api = new Api($gateway->api_key, $gateway->secret_key);
         try {
             $api->utility->verifyPaymentSignature([
                 'razorpay_order_id' => $request->razorpay_order_id,
@@ -380,6 +421,15 @@ class OrderController extends Controller
     // ── CASHFREE: Step 1 — Create Order ───────────────────────────────
     public function createCashfreeOrder(Request $request)
     {
+        $gateway = $this->enabledGateway('cashfree');
+        if (!$gateway) {
+            return response()->json(['error' => 'Cashfree is disabled. Please select an enabled payment method.'], 422);
+        }
+
+        if (empty($gateway->api_key) || empty($gateway->secret_key)) {
+            return response()->json(['error' => 'Cashfree credentials are not configured in Payment Gateway settings.'], 500);
+        }
+
         $this->validateCheckoutRequest($request);
 
         $cart = session()->get('cart', []);
@@ -396,18 +446,11 @@ class OrderController extends Controller
         $customer = $this->customer();
         $orderId = 'BB-' . strtoupper(uniqid());
 
-        if (empty(config('cashfree.app_id')) || empty(config('cashfree.secret_key'))) {
-            return response()->json(['error' => 'Cashfree credentials are not configured. Please set CASHFREE_APP_ID and CASHFREE_SECRET_KEY.'], 500);
-        }
-
         $returnUrl = $request->getSchemeAndHttpHost() . route('order.cashfree.verify', [], false) . '?order_id={order_id}';
 
-        $response = Http::withHeaders([
-            'x-client-id' => config('cashfree.app_id'),
-            'x-client-secret' => config('cashfree.secret_key'),
-            'x-api-version' => '2023-08-01',
+        $response = $this->cashfreeRequest($gateway)->withHeaders([
             'Content-Type' => 'application/json',
-        ])->post(config('cashfree.base_url') . '/orders', [
+        ])->post($this->cashfreeBaseUrl($gateway) . '/orders', [
             'order_id' => $orderId,
             'order_amount' => round($total, 2),
             'order_currency' => 'INR',
@@ -450,16 +493,18 @@ class OrderController extends Controller
     // ── CASHFREE: Step 2 — Verify & Save Order ────────────────────────
     public function verifyCashfreePayment(Request $request)
     {
+        $gateway = $this->enabledGateway('cashfree');
+        if (!$gateway) {
+            return response()->json(['error' => 'Cashfree is disabled. Please select an enabled payment method.'], 422);
+        }
+
         $orderId = $request->input('order_id');
         if (!$orderId)
             return response()->json(['error' => 'Missing order ID.'], 422);
 
         // Verify with Cashfree server-side
-        $response = Http::withHeaders([
-            'x-client-id' => config('cashfree.app_id'),
-            'x-client-secret' => config('cashfree.secret_key'),
-            'x-api-version' => '2023-08-01',
-        ])->get(config('cashfree.base_url') . '/orders/' . $orderId);
+        $response = $this->cashfreeRequest($gateway)
+            ->get($this->cashfreeBaseUrl($gateway) . '/orders/' . $orderId);
 
         if (!$response->successful()) {
             Log::error('Cashfree verify order failed: ' . $response->body());
@@ -485,11 +530,8 @@ class OrderController extends Controller
         $total = $totals['total'];
 
         // Get payment ID from payments list
-        $paymentsRes = Http::withHeaders([
-            'x-client-id' => config('cashfree.app_id'),
-            'x-client-secret' => config('cashfree.secret_key'),
-            'x-api-version' => '2023-08-01',
-        ])->get(config('cashfree.base_url') . '/orders/' . $orderId . '/payments');
+        $paymentsRes = $this->cashfreeRequest($gateway)
+            ->get($this->cashfreeBaseUrl($gateway) . '/orders/' . $orderId . '/payments');
 
         $cfPaymentId = $paymentsRes->successful()
             ? ($paymentsRes->json()[0]['cf_payment_id'] ?? null)
@@ -522,6 +564,10 @@ class OrderController extends Controller
     // ── COD: Place Order Directly ──────────────────────────────────────
     public function createCodOrder(Request $request)
     {
+        if (!$this->enabledGateway('cod')) {
+            return response()->json(['error' => 'Cash on Delivery is disabled. Please select an enabled payment method.'], 422);
+        }
+
         $this->validateCheckoutRequest($request);
 
         $cart = session()->get('cart', []);

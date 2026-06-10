@@ -29,6 +29,8 @@
             </div>
         @endif
 
+        <div id="paymentGatewayStatus" class="alert d-none mb-24" role="alert"></div>
+
         <form action="{{ route('paymentGateway.update') }}" method="POST">
             @csrf
 
@@ -47,7 +49,7 @@
                                 <span class="text-lg fw-semibold text-primary-light">Razorpay</span>
                             </div>
                             <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
-                                <input class="form-check-input" type="checkbox" name="razorpay_enabled" value="1" 
+                                <input class="form-check-input js-gateway-toggle" type="checkbox" name="razorpay_enabled" value="1" data-gateway="razorpay"
                                     {{ ($gateways->firstWhere('gateway_name', 'razorpay')?->is_enabled) ? 'checked' : '' }}>
                             </div>
                         </div>
@@ -110,7 +112,7 @@
                                 <span class="text-lg fw-semibold text-primary-light">Cashfree</span>
                             </div>
                             <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
-                                <input class="form-check-input" type="checkbox" name="cashfree_enabled" value="1"
+                                <input class="form-check-input js-gateway-toggle" type="checkbox" name="cashfree_enabled" value="1" data-gateway="cashfree"
                                     {{ ($gateways->firstWhere('gateway_name', 'cashfree')?->is_enabled) ? 'checked' : '' }}>
                             </div>
                         </div>
@@ -176,7 +178,7 @@
                                 <span class="text-lg fw-semibold text-primary-light">Cash on Delivery (COD)</span>
                             </div>
                             <div class="form-switch switch-primary d-flex align-items-center justify-content-center">
-                                <input class="form-check-input" type="checkbox" name="cod_enabled" value="1"
+                                <input class="form-check-input js-gateway-toggle" type="checkbox" name="cod_enabled" value="1" data-gateway="cod"
                                     {{ ($gateways->firstWhere('gateway_name', 'cod')?->is_enabled) ? 'checked' : '' }}>
                             </div>
                         </div>
@@ -186,11 +188,6 @@
                                     <p class="text-primary-light mb-0">
                                         <strong>Note:</strong> Enable this option to allow customers to pay cash on delivery. No additional configuration needed.
                                     </p>
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
-                                        Save Changes
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -202,5 +199,64 @@
 
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var statusBox = document.getElementById('paymentGatewayStatus');
+
+    function showStatus(message, isSuccess) {
+        if (!statusBox) return;
+
+        statusBox.className = 'alert mb-24 ' + (isSuccess ? 'alert-success' : 'alert-danger');
+        statusBox.textContent = message;
+
+        window.clearTimeout(showStatus.timer);
+        showStatus.timer = window.setTimeout(function () {
+            statusBox.className = 'alert d-none mb-24';
+            statusBox.textContent = '';
+        }, 3000);
+    }
+
+    document.querySelectorAll('.js-gateway-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            var previousState = !toggle.checked;
+
+            toggle.disabled = true;
+
+            fetch('{{ route('paymentGateway.status') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    gateway_name: toggle.dataset.gateway,
+                    is_enabled: toggle.checked ? 1 : 0
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { ok: response.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok) {
+                        throw new Error(result.data.message || 'Unable to update payment gateway status.');
+                    }
+
+                    showStatus(result.data.message || 'Payment gateway status updated.', true);
+                })
+                .catch(function (error) {
+                    toggle.checked = previousState;
+                    showStatus(error.message, false);
+                })
+                .finally(function () {
+                    toggle.disabled = false;
+                });
+        });
+    });
+});
+</script>
 
 @endsection

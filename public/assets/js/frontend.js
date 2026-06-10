@@ -1010,7 +1010,7 @@
 
     function selectedGateway() {
         var selected = document.querySelector('input[name="payment_method"]:checked');
-        return selected ? selected.value : "razorpay";
+        return selected ? selected.value : "";
     }
 
     function jsonResponse(response) {
@@ -1224,6 +1224,12 @@
         button.querySelector("span").textContent = "Processing...";
 
         var gateway = selectedGateway();
+
+        if (!gateway) {
+            alert("No payment method is available right now. Please contact support.");
+            resetCheckoutButton(button);
+            return;
+        }
 
         if (gateway === "cod") {
             startCodPayment(button, form);

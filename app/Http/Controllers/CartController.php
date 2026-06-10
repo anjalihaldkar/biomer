@@ -23,12 +23,13 @@ class CartController extends Controller
     {
         $request->validate(['code' => 'required|string']);
         $cart = session()->get('cart', []);
+        $code = strtoupper(trim($request->code));
         
         if (empty($cart)) {
             return response()->json(['success' => false, 'message' => 'Cart is empty.']);
         }
 
-        $coupon = \App\Models\Coupon::where('code', $request->code)->where('is_active', true)->first();
+        $coupon = \App\Models\Coupon::where('code', $code)->where('is_active', true)->first();
 
         if (!$coupon) {
             return response()->json(['success' => false, 'message' => 'Invalid or inactive coupon.']);

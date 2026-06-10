@@ -51,7 +51,7 @@ class OrderReturnController extends Controller
             'order_item_id' => 'required|integer',
             'reason' => 'required|string|in:defective,wrong_item,not_as_described,damaged,other',
             'description' => 'required|string|max:500',
-            'refund_amount' => 'required|numeric|min:0|max:' . $order->total_amount,
+            'refund_amount' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -61,6 +61,13 @@ class OrderReturnController extends Controller
         $selectedItem = $order->orderItems->firstWhere('id', (int) $request->order_item_id);
         if (!$selectedItem) {
             return back()->withErrors(['order_item_id' => 'Please select a valid order item.'])->withInput();
+        }
+
+        $refundMax = (float) $selectedItem->subtotal;
+        if ((float) $request->refund_amount > $refundMax) {
+            return back()
+                ->withErrors(['refund_amount' => 'Refund amount cannot be greater than the selected item subtotal.'])
+                ->withInput();
         }
 
         // Check if return already exists for this order item

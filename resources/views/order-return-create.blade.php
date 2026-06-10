@@ -26,6 +26,12 @@
                     <div class="orc__order-date">Ordered on {{ $order->created_at->format('d M Y') }} • Total: ₹{{ number_format($order->total_amount, 2) }}</div>
                 </div>
 
+                @php
+                    $selectedOrderItemId = old('order_item_id', optional($order->orderItems->first())->id);
+                    $selectedOrderItem = $order->orderItems->firstWhere('id', (int) $selectedOrderItemId) ?? $order->orderItems->first();
+                    $selectedRefundMax = (float) ($selectedOrderItem?->subtotal ?? 0);
+                @endphp
+
                 <div class="orc__body">
                     <form action="{{ route('order-returns.store', $order->order_number) }}" method="POST" class="orc__form">
                         @csrf
@@ -36,14 +42,15 @@
                             @foreach($order->orderItems as $item)
                             <label class="orc__item">
                                 <input type="radio" name="order_item_id" value="{{ $item->id }}"
+                                       data-refund-amount="{{ number_format((float) $item->subtotal, 2, '.', '') }}"
                                        {{ old('order_item_id') == $item->id || ($loop->first && !old('order_item_id')) ? 'checked' : '' }}>
-                                @if($item->product->featured_image)
-                                    <img src="{{ Storage::url($item->product->featured_image) }}" alt="{{ $item->product->name }}" class="orc__item-img">
+                                @if($item->product?->featured_image)
+                                    <img src="{{ Storage::url($item->product->featured_image) }}" alt="{{ $item->product_name }}" class="orc__item-img">
                                 @else
                                     <div class="orc__item-img orc__item-img--placeholder"><iconify-icon icon="mdi:package-variant" class="icon"></iconify-icon></div>
                                 @endif
                                 <div class="orc__item-details">
-                                    <div class="orc__item-name">{{ $item->product->name }}</div>
+                                    <div class="orc__item-name">{{ $item->product_name }}</div>
                                     <div class="orc__item-meta">
                                         Quantity: {{ $item->quantity }} • Price: ₹{{ number_format($item->price, 2) }}
                                         @if($item->variation_name)
@@ -85,9 +92,9 @@
                             <div class="mb-3">
                                 <label for="refund_amount" class="form-label">Refund Amount (₹) *</label>
                                 <input type="number" name="refund_amount" id="refund_amount" class="form-control"
-                                       step="0.01" min="0" max="{{ $order->total_amount }}"
-                                       value="{{ $order->total_amount }}" required>
-                                <small class="text-muted">Maximum refund: ₹{{ number_format($order->total_amount, 2) }}</small>
+                                       step="0.01" min="0" max="{{ number_format($selectedRefundMax, 2, '.', '') }}"
+                                       value="{{ old('refund_amount', number_format($selectedRefundMax, 2, '.', '')) }}" required>
+                                <small class="text-muted">Maximum refund: ₹<span id="refundAmountMaxLabel">{{ number_format($selectedRefundMax, 2) }}</span></small>
                             </div>
                         </div>
 
@@ -105,4 +112,26 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var refundInput = document.getElementById('refund_amount');
+    var refundMaxLabel = document.getElementById('refundAmountMaxLabel');
+
+    document.querySelectorAll('input[name="order_item_id"]').forEach(function (input) {
+        input.addEventListener('change', function () {
+            if (!refundInput || !refundMaxLabel) return;
+
+            var amount = Number(input.dataset.refundAmount || 0);
+            var formatted = amount.toFixed(2);
+
+            refundInput.max = formatted;
+            refundInput.value = formatted;
+            refundMaxLabel.textContent = amount.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        });
+    });
+});
+</script>
 @endsection

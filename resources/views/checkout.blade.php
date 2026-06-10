@@ -3,7 +3,7 @@
 
 @section('content')
 <section class="chk__section"
-         data-cashfree-environment="{{ config('cashfree.environment', 'sandbox') }}"
+         data-cashfree-environment="{{ $cashfreeGateway?->environment ?? 'sandbox' }}"
          data-order-razorpay-url="{{ route('order.razorpay') }}"
          data-order-payment-success-url="{{ route('order.payment.success') }}"
          data-order-cashfree-url="{{ route('order.cashfree') }}"
@@ -229,7 +229,7 @@
     <span class="chk__form-card-num"><iconify-icon icon="fa6-solid:credit-card" class="icon"></iconify-icon></span> Choose Payment Method
 </div>
 <div class="pay-methods">
-    @foreach($paymentGateways as $index => $gateway)
+    @forelse($paymentGateways as $index => $gateway)
         <label class="pay-method-label">
             <input type="radio" name="payment_method" value="{{ $gateway->gateway_name }}" {{ $index == 0 ? 'checked' : '' }}>
             @if($gateway->logo_url)
@@ -241,14 +241,16 @@
             @endif
             {{ $gateway->display_name }}
         </label>
-    @endforeach
+    @empty
+        <div class="chk__error">No payment method is available right now. Please contact support.</div>
+    @endforelse
 </div>
 
 <p class="chk__secure-note">
     <iconify-icon icon="ic:outline-lock" class="icon"></iconify-icon> Your information is secure and encrypted
 </p>
 
-<button type="button" id="placeOrderBtn" class="chk__place-btn" onclick="startPayment()">
+<button type="button" id="placeOrderBtn" class="chk__place-btn" onclick="startPayment()" {{ $paymentGateways->isEmpty() ? 'disabled' : '' }}>
     <iconify-icon icon="fa6-solid:credit-card" class="btn-icon"></iconify-icon>
     <span>Pay Now</span>
 </button>
