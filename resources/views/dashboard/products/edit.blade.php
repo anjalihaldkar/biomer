@@ -6,6 +6,26 @@
     $subTitle = 'Edit Product';
 @endphp
 
+@push('styles')
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css">
+  <style>
+    .note-editor.note-frame {
+      border-color: #d7e1e8;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .note-editor .note-toolbar {
+      background: #f8fafc;
+      border-bottom-color: #d7e1e8;
+    }
+
+    .note-editor .note-editing-area .note-editable {
+      min-height: 180px;
+    }
+  </style>
+@endpush
+
 @section('content')
 
   {{-- Breadcrumb --}}
@@ -132,6 +152,7 @@
                 <label class="form-label fw-semibold">Full Description</label>
                 <textarea name="description" rows="5"
                           class="form-control @error('description') is-invalid @enderror"
+                          data-product-description-editor
                           placeholder="Detailed product description...">{{ old('description', $product->description) }}</textarea>
                 @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
@@ -336,3 +357,24 @@
   </form>
 
 @endsection
+
+@push('scripts')
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (!window.jQuery || !jQuery.fn.summernote) return;
+
+      jQuery('[data-product-description-editor]').summernote({
+        height: 220,
+        placeholder: 'Detailed product description...',
+        toolbar: [
+          ['style', ['style']],
+          ['font', ['bold', 'italic', 'underline', 'clear']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['insert', ['link', 'picture']],
+          ['view', ['codeview']]
+        ]
+      });
+    });
+  </script>
+@endpush

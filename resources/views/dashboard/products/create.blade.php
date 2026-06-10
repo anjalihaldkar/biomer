@@ -6,6 +6,7 @@
 @endphp
 
 @push('styles')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css">
     <style>
         :root {
             --green: #2d7a45;
@@ -548,6 +549,21 @@
             min-height: 118px;
         }
 
+        .product-editor .note-editor.note-frame {
+            border-color: #d7e1e8;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .product-editor .note-editor .note-toolbar {
+            background: #f8fafc;
+            border-bottom-color: #d7e1e8;
+        }
+
+        .product-editor .note-editor .note-editing-area .note-editable {
+            min-height: 200px;
+        }
+
         .product-editor small,
         .product-editor .text-muted,
         .product-editor .text-secondary-light {
@@ -913,6 +929,7 @@
                                 <div class="col-12">
                                     <label class="form-label">Full Description</label>
                                     <textarea name="description" class="form-control" rows="6"
+                                        data-product-description-editor
                                         placeholder="Detailed product description...">{{ old('description', $product->description ?? '') }}</textarea>
                                 </div>
 
@@ -1134,3 +1151,24 @@
         </form>
     </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.jQuery || !jQuery.fn.summernote) return;
+
+            jQuery('[data-product-description-editor]').summernote({
+                height: 240,
+                placeholder: 'Detailed product description...',
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['insert', ['link', 'picture']],
+                    ['view', ['codeview']]
+                ]
+            });
+        });
+    </script>
+@endpush
