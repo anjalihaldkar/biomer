@@ -7746,7 +7746,7 @@ body.no-product-motion .shop__filters-card * {
 .shop__search-icon {
     position: absolute;
     left: 12px;
-    top: 50%;
+    top: 26%;
     transform: translateY(-50%);
     color: #9aab9a;
     font-size: 1.1rem;

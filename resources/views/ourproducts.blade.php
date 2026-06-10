@@ -23,7 +23,7 @@
         <div class="col-12">
           <div class="avan__header">
             <div class="avan__header-top">
-              <span class="avan__check">✓</span>
+              
               <h3 class="avan__header-title">Available Now</h3>
             </div>
             <p class="avan__header-desc">Proven formulations ready for field application</p>

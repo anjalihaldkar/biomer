@@ -196,8 +196,9 @@
                          alt="">
                     <button type="button"
                             class="btn btn-danger btn-sm position-absolute top-0 end-0 delete-gallery-img"
-                            data-id="{{ $img->id }}"
-                            data-url="{{ route('dashboard.products.destroyImage', $img) }}"
+                            data-product-edit-gallery-delete
+                            data-image-id="{{ $img->id }}"
+                            data-delete-url="{{ route('dashboard.products.destroyImage', $img) }}"
                             style="font-size:.65rem;padding:1px 5px;line-height:1.4;">✕</button>
                   </div>
                 </div>
@@ -282,19 +283,23 @@
               <img src="{{ Storage::url($product->featured_image) }}"
                    class="img-fluid radius-8 border mb-3"
                    style="max-height:160px;object-fit:cover;"
-                   id="featured-preview">
+                   id="featured-preview"
+                   data-product-edit-featured-preview>
             @else
               <div class="bg-neutral-200 radius-8 d-flex align-items-center justify-content-center mb-3"
-                   style="height:120px;" id="featured-placeholder">
+                   style="height:120px;" id="featured-placeholder"
+                   data-product-edit-featured-placeholder>
                 <span class="text-muted text-sm">No image uploaded</span>
               </div>
               <img src="" class="img-fluid radius-8 border mb-3 d-none"
-                   style="max-height:160px;object-fit:cover;" id="featured-preview">
+                   style="max-height:160px;object-fit:cover;" id="featured-preview"
+                   data-product-edit-featured-preview>
             @endif
 
             <input type="file" name="featured_image" id="featured_image_input"
                    accept="image/*"
-                   class="form-control form-control-sm @error('featured_image') is-invalid @enderror">
+                   class="form-control form-control-sm @error('featured_image') is-invalid @enderror"
+                   data-product-edit-featured-input>
             <small class="text-muted">Max 2MB. Leave blank to keep current.</small>
             @error('featured_image')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
 
@@ -331,40 +336,3 @@
   </form>
 
 @endsection
-
-@push('scripts')
-<script>
-$(function () {
-
-  // ── Featured image live preview ────────────────────────────────
-  $('#featured_image_input').on('change', function () {
-    const file = this.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      $('#featured-preview').attr('src', e.target.result).removeClass('d-none');
-      $('#featured-placeholder').addClass('d-none');
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // ── Delete gallery image via AJAX ──────────────────────────────
-  $(document).on('click', '.delete-gallery-img', function () {
-    if (!confirm('Remove this image?')) return;
-    const btn = $(this);
-    $.ajax({
-      url    : btn.data('url'),
-      method : 'DELETE',
-      headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-      success() {
-        $(`#gallery-item-${btn.data('id')}`).fadeOut(300, function () { $(this).remove(); });
-      },
-      error() {
-        alert('Failed to delete image. Please try again.');
-      }
-    });
-  });
-
-});
-</script>
-@endpush

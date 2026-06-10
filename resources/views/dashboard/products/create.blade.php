@@ -1,4 +1,4 @@
-﻿@extends('layout.layout')
+@extends('layout.layout')
 
 @php
     $title = isset($product) ? 'Edit Product' : 'Product Add';
@@ -1047,16 +1047,17 @@
                                         class="img-fluid rounded"
                                         style="max-height:180px;object-fit:cover;width:100%;">
                                     <button type="button" class="del-img"
-                                        onclick="deleteFeaturedImage({{ $product->id }}, this)"
+                                        data-featured-image-delete
+                                        data-product-id="{{ $product->id }}"
                                         title="Remove">x</button>
                                 </div>
                             @endif
                             <input type="file" name="featured_image" id="featuredImageInput" class="form-control" accept="image/*"
-                                onchange="previewImage(this, 'featuredPreview')">
+                                data-featured-image-input data-preview-target="featuredPreview">
                             <div class="featured-img-wrap mt-2" id="featuredPreviewWrap" style="display:none;">
                                 <img id="featuredPreview" class="img-fluid rounded"
                                     style="max-height:180px;object-fit:cover;width:100%;">
-                                <button type="button" class="del-img" onclick="clearFeaturedPreview()" title="Remove">x</button>
+                                <button type="button" class="del-img" data-featured-preview-clear title="Remove">x</button>
                             </div>
                         </div>
                     </div>
@@ -1071,14 +1072,15 @@
                                         <div class="existing-img" id="existingImg_{{ $img->id }}">
                                             <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}">
                                             <button type="button" class="del-img"
-                                                onclick="deleteImage({{ $img->id }}, this)"
+                                                data-gallery-image-delete
+                                                data-image-id="{{ $img->id }}"
                                                 title="Remove">x</button>
                                         </div>
                                     @endforeach
                                 </div>
                             @endif
                             <input type="file" name="gallery[]" class="form-control" accept="image/*" multiple
-                                onchange="previewGallery(this)">
+                                data-gallery-input>
                             <div id="galleryPreviews" class="img-preview-grid"></div>
                             <small class="text-muted">Select multiple images (Ctrl+click).</small>
                         </div>
@@ -1090,17 +1092,16 @@
                         <div class="card-body">
                             <div class="input-group">
                                 <input type="text" id="tagInput" class="form-control"
-                                    placeholder="Type a tag and press Enter">
+                                    placeholder="Type a tag and press Enter"
+                                    data-product-tag-input>
                                 <button type="button" class="btn btn-outline-secondary"
-                                    onclick="addTag()">Add</button>
+                                    data-product-tag-add>Add</button>
                             </div>
-                            <div class="tag-pills mt-2" id="tagPills"></div>
+                            <div class="tag-pills mt-2" id="tagPills" data-product-tag-pills></div>
                             <div id="tagInputsContainer"></div>
 
                             @if (isset($product))
-                                <script>
-                                    window._existingTags = @json($product->tags->pluck('name'));
-                                </script>
+                                <div data-product-existing-tags="{{ e($product->tags->pluck('name')->toJson()) }}"></div>
                             @endif
 
                             <div class="mt-3">
@@ -1109,7 +1110,8 @@
                                     @foreach ($tags->take(20) as $t)
                                         <span class="badge bg-light text-dark border"
                                             style="cursor:pointer;font-size:.75rem;"
-                                            onclick="addTagByName('{{ addslashes($t->name) }}')">{{ $t->name }}</span>
+                                            data-product-tag-suggestion
+                                            data-tag-name="{{ $t->name }}">{{ $t->name }}</span>
                                     @endforeach
                                 </div>
                             </div>
@@ -1132,352 +1134,3 @@
         </form>
     </div>
 @endsection
-
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var builder = document.getElementById('productVariationBuilder');
-        if (!builder) return;
-
-        var panels = builder.querySelectorAll('.wc-tab-panel');
-        var tabs = builder.querySelectorAll('.wc-data-tab');
-        var list = document.getElementById('variationsTableBody');
-        var emptyRow = document.getElementById('emptyVariationsRow');
-        var countLabel = document.getElementById('variationCountLabel');
-
-        function activateTab(panelId) {
-            tabs.forEach(function (tab) {
-                tab.classList.toggle('active', tab.dataset.wcTab === panelId);
-            });
-            panels.forEach(function (panel) {
-                panel.classList.toggle('active', panel.id === panelId);
-            });
-        }
-
-        function updateBuilderEmptyState() {
-            var total = list ? list.querySelectorAll('.variation-row').length : 0;
-            if (emptyRow) emptyRow.classList.toggle('d-none', total > 0);
-            if (countLabel) countLabel.textContent = total;
-        }
-
-        function slugPart(value) {
-            return String(value || '')
-                .trim()
-                .replace(/[^a-zA-Z0-9]+/g, '-')
-                .replace(/^-|-$/g, '')
-                .toUpperCase();
-        }
-
-        function selectedAttributeSets() {
-            return Array.from(builder.querySelectorAll('.variation-attribute-toggle:checked')).map(function (toggle) {
-                var card = toggle.closest('.attribute-card');
-                var values = Array.from(card.querySelectorAll('.variation-value-toggle:checked')).map(function (input) {
-                    return input.value;
-                });
-
-                return {
-                    name: toggle.dataset.attributeName,
-                    values: values
-                };
-            }).filter(function (attribute) {
-                return attribute.values.length > 0;
-            });
-        }
-
-        function combinations(sets) {
-            return sets.reduce(function (carry, set) {
-                var next = [];
-                carry.forEach(function (combo) {
-                    set.values.forEach(function (value) {
-                        var merged = Object.assign({}, combo);
-                        merged[set.name] = value;
-                        next.push(merged);
-                    });
-                });
-                return next;
-            }, [{}]);
-        }
-
-        function variationName(attributes) {
-            return Object.keys(attributes).map(function (name) {
-                return name + ': ' + attributes[name];
-            }).join(' / ');
-        }
-
-        function addVariationRow(attributes) {
-            if (!list) return;
-
-            var index = window.varIndex++;
-            var name = variationName(attributes);
-            var productSku = document.querySelector('[name="sku"]')?.value || 'PRODUCT';
-            var basePrice = document.querySelector('[name="base_price"]')?.value || '';
-            var unit = document.querySelector('[name="unit"]')?.value || '';
-            var sku = slugPart(productSku + '-' + Object.values(attributes).join('-'));
-            var hiddenAttributes = Object.keys(attributes).map(function (attributeName) {
-                return '<input type="hidden" name="variations[' + index + '][attributes][' + attributeName.replace(/"/g, '&quot;') + ']" value="' + String(attributes[attributeName]).replace(/"/g, '&quot;') + '">';
-            }).join('');
-
-            var row = document.createElement('div');
-            row.className = 'variation-row is-open';
-            row.innerHTML =
-                '<div class="wc-variation-heading">' +
-                    '<input type="hidden" name="variations[' + index + '][id]" value="">' +
-                    '<input type="hidden" name="variations[' + index + '][name]" value="' + name.replace(/"/g, '&quot;') + '">' +
-                    hiddenAttributes +
-                    '<button type="button" class="wc-variation-title">' +
-                        '<iconify-icon icon="lucide:grip-vertical"></iconify-icon>' +
-                        '<span>#New ' + name + '</span>' +
-                    '</button>' +
-                    '<div class="wc-variation-actions">' +
-                        '<span class="badge bg-success-100 text-success-600">Enabled</span>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger-600 remove-variation">Remove</button>' +
-                        '<button type="button" class="wc-row-toggle" aria-label="Toggle variation"><iconify-icon icon="lucide:chevron-down"></iconify-icon></button>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="wc-variation-body">' +
-                    '<div class="row g-3">' +
-                        '<div class="col-md-6"><label class="form-label fw-bold">SKU</label><input type="text" name="variations[' + index + '][sku]" class="form-control" value="' + sku + '" placeholder="Auto generated if empty"></div>' +
-                        '<div class="col-md-3"><label class="form-label fw-bold">MRP / Compare (INR)</label><input type="number" step="0.01" min="0" name="variations[' + index + '][compare_at_price]" class="form-control" placeholder="MRP"><input type="hidden" name="variations[' + index + '][cost_price]" value=""></div>' +
-                        '<div class="col-md-3"><label class="form-label fw-bold">Selling Price (INR)</label><input type="number" step="0.01" min="0" name="variations[' + index + '][price]" class="form-control" value="' + basePrice + '" required></div>' +
-                        '<div class="col-md-4"><label class="form-label fw-bold">Stock Quantity</label><input type="hidden" name="variations[' + index + '][track_stock]" value="0"><input type="hidden" name="variations[' + index + '][is_in_stock]" value="0"><input type="number" min="0" name="variations[' + index + '][stock_qty]" class="form-control" value="0"></div>' +
-                        '<input type="hidden" name="variations[' + index + '][unit]" value="' + unit.replace(/"/g, '&quot;') + '">' +
-                        '<div class="col-md-8"><label class="form-label fw-bold">Variation Settings</label><div class="wc-checkbox-grid">' +
-                            '<input type="hidden" name="variations[' + index + '][track_stock]" value="1">' +
-                            '<input type="hidden" name="variations[' + index + '][is_in_stock]" value="1">' +
-                            '<input type="hidden" name="variations[' + index + '][is_active]" value="0">' +
-                            '<input type="hidden" class="variation-default-hidden" name="variations[' + index + '][is_default]" value="0">' +
-                            '<label><input class="form-check-input variation-default-radio" type="radio" name="default_variation_row" value="' + index + '"> Default variation</label>' +
-                            '<label><input class="form-check-input" type="checkbox" name="variations[' + index + '][is_active]" value="1" checked> Enabled</label>' +
-                        '</div></div>' +
-                    '</div>' +
-                '</div>';
-
-            list.appendChild(row);
-            updateBuilderEmptyState();
-        }
-
-        tabs.forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                activateTab(this.dataset.wcTab);
-            });
-        });
-
-        document.getElementById('goToVariationsBtn')?.addEventListener('click', function () {
-            activateTab('variationsPanel');
-        });
-
-        builder.querySelectorAll('.wc-attribute-heading').forEach(function (button) {
-            button.addEventListener('click', function () {
-                this.closest('.wc-attribute-item').classList.toggle('is-open');
-            });
-        });
-
-        builder.addEventListener('click', function (event) {
-            if (event.target.closest('.wc-row-toggle') || event.target.closest('.wc-variation-title')) {
-                event.target.closest('.variation-row')?.classList.toggle('is-open');
-            }
-
-            if (event.target.closest('.remove-variation') && !event.target.closest('[onclick]')) {
-                event.target.closest('.variation-row')?.remove();
-                updateBuilderEmptyState();
-            }
-        });
-
-        document.getElementById('generateVariationsBtn')?.addEventListener('click', function () {
-            var sets = selectedAttributeSets();
-            if (!sets.length) {
-                alert('Select at least one attribute value.');
-                return;
-            }
-
-            combinations(sets).forEach(addVariationRow);
-            activateTab('variationsPanel');
-        });
-
-        builder.addEventListener('change', function (event) {
-            if (!event.target.classList.contains('variation-default-radio')) return;
-            builder.querySelectorAll('.variation-default-hidden').forEach(function (input) {
-                input.value = '0';
-            });
-            var hidden = event.target.closest('.wc-checkbox-grid')?.querySelector('.variation-default-hidden');
-            if (hidden) hidden.value = '1';
-        });
-
-        updateBuilderEmptyState();
-    });
-
-    window.varIndex = {{ isset($product) ? $product->variations->count() : 0 }};
-
-    function removeExistingVariation(id, btn) {
-        if (!confirm('Remove this variation?')) return;
-        fetch('/dashboard/product-variations/' + id, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                btn.closest('.variation-row').remove();
-                var countLabel = document.getElementById('variationCountLabel');
-                var emptyRow = document.getElementById('emptyVariationsRow');
-                var total = document.querySelectorAll('#variationsTableBody .variation-row').length;
-                if (countLabel) countLabel.textContent = total;
-                if (emptyRow) emptyRow.classList.toggle('d-none', total > 0);
-            }
-        })
-        .catch(function() { alert('Error removing variation. Try again.'); });
-    }
-    // Featured image preview
-    function previewImage(input, previewId) {
-        var prev = document.getElementById(previewId);
-        var wrap = document.getElementById('featuredPreviewWrap');
-        if (input.files && input.files[0]) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                prev.src = e.target.result;
-                if (wrap) wrap.style.display = 'block';
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function clearFeaturedPreview() {
-        var input = document.getElementById('featuredImageInput');
-        var wrap = document.getElementById('featuredPreviewWrap');
-        var preview = document.getElementById('featuredPreview');
-        if (input) input.value = '';
-        if (preview) preview.removeAttribute('src');
-        if (wrap) wrap.style.display = 'none';
-    }
-
-    function deleteFeaturedImage(productId, btn) {
-        if (!confirm('Remove featured image?')) return;
-        fetch('/dashboard/products/' + productId + '/featured-image', {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                var wrap = btn.closest('.featured-img-wrap');
-                if (wrap) wrap.remove();
-            }
-        })
-        .catch(function() { alert('Error removing featured image. Try again.'); });
-    }
-
-    // Gallery preview
-    function previewGallery(input) {
-        var container = document.getElementById('galleryPreviews');
-        container.innerHTML = '';
-        Array.from(input.files).forEach(function(file, index) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                var wrap = document.createElement('div');
-                wrap.className = 'existing-img';
-                wrap.dataset.previewIndex = index;
-                var img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'preview-thumb';
-                var remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'del-img';
-                remove.title = 'Remove';
-                remove.textContent = 'x';
-                remove.onclick = function() {
-                    removeGalleryPreview(index);
-                };
-                wrap.appendChild(img);
-                wrap.appendChild(remove);
-                container.appendChild(wrap);
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function removeGalleryPreview(indexToRemove) {
-        var input = document.querySelector('input[name="gallery[]"]');
-        if (!input || !input.files) return;
-
-        var transfer = new DataTransfer();
-        Array.from(input.files).forEach(function(file, index) {
-            if (index !== indexToRemove) transfer.items.add(file);
-        });
-        input.files = transfer.files;
-        previewGallery(input);
-    }
-
-    // Delete existing gallery image via AJAX
-    function deleteImage(id, btn) {
-        if (!confirm('Remove this image?')) return;
-        fetch('/dashboard/product-images/' + id, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.success) document.getElementById('existingImg_' + id).remove();
-        })
-        .catch(function() { alert('Error removing image. Try again.'); });
-    }
-
-    // â”€â”€ TAG MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    var activeTags = new Set();
-
-    function renderTags() {
-        var pills  = document.getElementById('tagPills');
-        var inputs = document.getElementById('tagInputsContainer');
-        pills.innerHTML  = '';
-        inputs.innerHTML = '';
-
-        activeTags.forEach(function(tag) {
-            var safeName = tag.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-            var pill = document.createElement('span');
-            pill.className = 'tag-pill';
-            pill.innerHTML = tag + '<button type="button" onclick="removeTag(\'' + safeName + '\')">&#x2715;</button>';
-            pills.appendChild(pill);
-
-            var hidden = document.createElement('input');
-            hidden.type  = 'hidden';
-            hidden.name  = 'tags[]';
-            hidden.value = tag;
-            inputs.appendChild(hidden);
-        });
-    }
-
-    function addTagByName(name) {
-        if (name && !activeTags.has(name)) {
-            activeTags.add(name);
-            renderTags();
-        }
-    }
-
-    function addTag() {
-        var input = document.getElementById('tagInput');
-        var val   = input.value.trim();
-        if (val && !activeTags.has(val)) {
-            activeTags.add(val);
-            renderTags();
-        }
-        input.value = '';
-    }
-
-    function removeTag(name) {
-        activeTags.delete(name);
-        renderTags();
-    }
-
-    document.getElementById('tagInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTag();
-        }
-    });
-
-    // Pre-fill existing tags in edit mode
-    (window._existingTags || []).forEach(function(t) { activeTags.add(t); });
-    renderTags();
-</script>
-@endpush

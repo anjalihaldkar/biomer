@@ -21,7 +21,7 @@
         <div class="col-12">
           <div class="avan__header">
             <div class="avan__header-top">
-              <span class="avan__check">✓</span>
+
               <h3 class="avan__header-title">All Products</h3>
             </div>
             <p class="avan__header-desc">Proven formulations ready for field application</p>
@@ -36,7 +36,7 @@
               <h4 class="shop__filters-title">Filters</h4>
               <a href="{{ route('products.index') }}" class="shop__filters-reset">Reset</a>
             </div>
-            <form method="GET" action="{{ route('products.index') }}" id="filterForm">
+            <form method="GET" action="{{ route('products.index') }}" id="filterForm" data-product-filter-form>
 
               <div class="shop__search-row">
                 <div class="shop__search-group">
@@ -114,18 +114,18 @@
           @if(request()->hasAny(['search', 'category', 'brand', 'min_price', 'max_price']))
             <div class="row mb-3">
               <div class="col-12">
-                <div class="shop__results-info">
+                <!-- <div class="shop__results-info">
                   <i class="ri-information-line"></i>
                   Showing {{ $products->count() }} of {{ $products->total() }} products
                   @if(request('search'))
                     for "<strong>{{ request('search') }}</strong>"
                   @endif
-                </div>
+                </div> -->
               </div>
             </div>
           @endif
 
-          <div class="row g-4">
+          <div class="row g-4" data-product-results>
 
         @php
           // ✅ Get wishlist product IDs for logged in customer
@@ -256,6 +256,7 @@
 
           </div>
 
+          <div data-product-pagination>
           @if($products->hasPages())
             <div class="row mt-5">
               <div class="col-12 d-flex justify-content-center">
@@ -263,6 +264,7 @@
               </div>
             </div>
           @endif
+          </div>
         </div>
       </div>
 
@@ -326,4 +328,3 @@
   </section>
 
 @endsection
-

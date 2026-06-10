@@ -91,7 +91,8 @@
     /* ── Add these to your style.css ─────────────────────────────────── */
 
     /* Cart Icon */
-    .bb-cart-icon {
+    .bb-cart-icon,
+    .bb-wishlist-icon {
         position: relative;
         display: inline-flex;
         align-items: center;
@@ -99,6 +100,7 @@
         width: 42px;
         height: 42px;
         font-size: 1.3rem;
+        color: #245e36;
         text-decoration: none;
         padding: 0;
         border-radius: 14px;
@@ -106,13 +108,16 @@
         transition: background .2s ease, transform .2s ease;
     }
 
-    .bb-cart-icon:hover {
+    .bb-cart-icon:hover,
+    .bb-wishlist-icon:hover {
         background: #e0f2d8;
+        color: #245e36;
         transform: translateY(-1px);
     }
 
     /* Cart Badge */
-    .bb-cart-badge {
+    .bb-cart-badge,
+    .bb-wishlist-badge {
         position: absolute;
         top: -4px;
         right: -4px;
@@ -357,6 +362,9 @@
     ═══════════════════════════ --}}
     @php
         $cartCount = collect(session('cart', []))->sum('quantity');
+        $wishlistCount = Auth::guard('customer')->check()
+            ? Auth::guard('customer')->user()->wishlists()->count()
+            : 0;
     @endphp
     <header>
         <div class="wrap nav">
@@ -374,6 +382,10 @@
             </nav>
             <div class="nav-actions">
                 @auth('customer')
+                    <a class="bb-wishlist-icon" href="{{ route('wishlist.index') }}" aria-label="View wishlist">
+                        <i class="ri-heart-line" aria-hidden="true"></i>
+                        <span id="wishlist-count" class="bb-wishlist-badge" style="{{ $wishlistCount > 0 ? '' : 'display:none;' }}">{{ $wishlistCount }}</span>
+                    </a>
                     <a class="bb-cart-icon" href="{{ route('cart.index') }}" aria-label="View cart">
                         <i class="ri-shopping-cart-2-line" aria-hidden="true"></i>
                         @if($cartCount > 0)
@@ -408,6 +420,7 @@
             @auth('customer')
                 <a href="{{ route('customer.dashboard') }}">Dashboard</a><a href="{{ route('customer.account') }}"
                     class="register">Account</a>
+                <a href="{{ route('wishlist.index') }}">Wishlist @if($wishlistCount > 0) ({{ $wishlistCount }}) @endif</a>
             @else
                 <a href="{{ route('customer.login') }}">Login</a><a href="{{ route('customer.register') }}"
                     class="register">Register</a>

@@ -1,3 +1,5 @@
+@props(['script' => ''])
+
     <!-- jQuery library js -->
     <script src="{{ asset('assets/js/lib/jquery-3.7.1.min.js') }}"></script>
     <!-- Bootstrap js -->
@@ -32,6 +34,7 @@
 
     <!-- main js -->
     <script src="{{ asset('assets/js/app.js') }}"></script>
+    <script src="{{ asset('assets/js/backend.js') }}?v={{ filemtime(public_path('assets/js/backend.js')) }}"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -69,5 +72,5 @@
         });
     </script>
 
-    <?php echo (isset($script) ? $script   : '')?>
+    {!! $script !!}
     @stack('scripts')

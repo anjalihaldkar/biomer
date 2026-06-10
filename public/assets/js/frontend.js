@@ -656,6 +656,7 @@
     var productSection = document.querySelector(".avan__section[data-cart-add-url][data-wishlist-toggle-url]");
     var csrfMeta = document.querySelector('meta[name="csrf-token"]');
     var csrfToken = csrfMeta ? csrfMeta.content : "";
+    var latestProductRequest = 0;
 
     if (!productSection) return;
 
@@ -687,44 +688,142 @@
         });
     }
 
-    productSection.querySelectorAll(".shop__variation-btn").forEach(function (button) {
-        button.addEventListener("click", function () {
-            var card = this.closest(".shop__card");
+    function initializeVariationDefaults() {
+        productSection.querySelectorAll(".shop__card").forEach(function (card) {
+            var firstVariation = card.querySelector(".shop__variation-btn");
+            if (firstVariation && !card.querySelector(".shop__variation-btn--active")) {
+                firstVariation.click();
+            }
+        });
+    }
+
+    function buildFilterUrl(form) {
+        var params = new URLSearchParams(new FormData(form));
+
+        Array.from(params.keys()).forEach(function (key) {
+            if (!params.get(key)) {
+                params.delete(key);
+            }
+        });
+
+        var queryString = params.toString();
+        return form.action + (queryString ? "?" + queryString : "");
+    }
+
+    function updateProductsFromUrl(url, pushState) {
+        var results = productSection.querySelector("[data-product-results]");
+        var pagination = productSection.querySelector("[data-product-pagination]");
+        var requestId = latestProductRequest + 1;
+
+        if (!results) return;
+
+        latestProductRequest = requestId;
+        productSection.classList.add("shop__section--loading");
+
+        fetch(url, {
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error("Could not load products.");
+                }
+
+                return response.text();
+            })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, "text/html");
+                var nextResults = doc.querySelector("[data-product-results]");
+                var nextPagination = doc.querySelector("[data-product-pagination]");
+
+                if (requestId !== latestProductRequest) {
+                    return;
+                }
+
+                if (nextResults) {
+                    results.innerHTML = nextResults.innerHTML;
+                }
+
+                if (pagination && nextPagination) {
+                    pagination.innerHTML = nextPagination.innerHTML;
+                }
+
+                if (pushState) {
+                    window.history.replaceState({}, "", url);
+                }
+
+                initializeVariationDefaults();
+            })
+            .catch(function () {
+                if (window.BharatBiomerModal) {
+                    window.BharatBiomerModal.show({
+                        title: "Search failed",
+                        message: "Could not update products. Please try again.",
+                        button: "Close"
+                    });
+                }
+            })
+            .finally(function () {
+                if (requestId === latestProductRequest) {
+                    productSection.classList.remove("shop__section--loading");
+                }
+            });
+    }
+
+    function resetFilters() {
+        productSection.querySelectorAll("#filterForm input, #filterForm select").forEach(function (field) {
+            if (field.tagName === "SELECT") {
+                field.selectedIndex = 0;
+            } else {
+                field.value = "";
+            }
+        });
+
+        applyFilters();
+    }
+
+    function applyFilters() {
+        var form = document.getElementById("filterForm");
+        if (!form) return;
+
+        updateProductsFromUrl(buildFilterUrl(form), true);
+    }
+
+    productSection.addEventListener("click", function (event) {
+        var variationButton = event.target.closest(".shop__variation-btn");
+        var addButton = event.target.closest(".add-to-cart");
+        var wishlistButton = event.target.closest(".wishlist-toggle");
+        var paginationLink = event.target.closest("[data-product-pagination] a");
+
+        if (variationButton) {
+            var card = variationButton.closest(".shop__card");
             if (!card) return;
 
-            card.querySelectorAll(".shop__variation-btn").forEach(function (variationButton) {
-                variationButton.classList.remove("shop__variation-btn--active");
+            card.querySelectorAll(".shop__variation-btn").forEach(function (button) {
+                button.classList.remove("shop__variation-btn--active");
             });
-            this.classList.add("shop__variation-btn--active");
+            variationButton.classList.add("shop__variation-btn--active");
 
             var priceEl = card.querySelector(".shop__price");
             var unitEl = card.querySelector(".shop__price-unit");
 
             if (priceEl) {
-                priceEl.textContent = formatPrice(this.dataset.price);
+                priceEl.textContent = formatPrice(variationButton.dataset.price);
             }
 
             if (unitEl) {
-                unitEl.textContent = "/ " + this.dataset.unit;
+                unitEl.textContent = "/ " + variationButton.dataset.unit;
             }
 
-            var addButton = card.querySelector(".add-to-cart");
-            if (addButton) {
-                addButton.dataset.variationId = this.dataset.variationId;
+            var selectedAddButton = card.querySelector(".add-to-cart");
+            if (selectedAddButton) {
+                selectedAddButton.dataset.variationId = variationButton.dataset.variationId;
             }
-        });
-    });
-
-    productSection.querySelectorAll(".shop__card").forEach(function (card) {
-        var firstVariation = card.querySelector(".shop__variation-btn");
-        if (firstVariation) {
-            firstVariation.click();
         }
-    });
 
-    productSection.querySelectorAll(".add-to-cart").forEach(function (button) {
-        button.addEventListener("click", function () {
-            var label = this.querySelector("span");
+        if (addButton) {
+            var label = addButton.querySelector("span");
 
             fetch(productSection.dataset.cartAddUrl, {
                 method: "POST",
@@ -733,9 +832,9 @@
                     "X-CSRF-TOKEN": csrfToken
                 },
                 body: JSON.stringify({
-                    product_id: this.dataset.id,
+                    product_id: addButton.dataset.id,
                     quantity: 1,
-                    variation_id: this.dataset.variationId || null
+                    variation_id: addButton.dataset.variationId || null
                 })
             })
                 .then(function (response) {
@@ -751,26 +850,24 @@
                             label.textContent = "Added!";
                         }
 
-                        button.classList.add("shop__btn--added");
+                        addButton.classList.add("shop__btn--added");
                         setTimeout(function () {
                             if (label) {
                                 label.textContent = "Add to Cart";
                             }
-                            button.classList.remove("shop__btn--added");
+                            addButton.classList.remove("shop__btn--added");
                         }, 2000);
                     }
                 })
                 .catch(function () {
                     alert("Could not add to cart. Please try again.");
                 });
-        });
-    });
+        }
 
-    productSection.querySelectorAll(".wishlist-toggle").forEach(function (button) {
-        button.addEventListener("click", function (event) {
+        if (wishlistButton) {
             event.preventDefault();
 
-            var self = this;
+            var self = wishlistButton;
             var originalText = self.textContent;
 
             self.disabled = true;
@@ -785,7 +882,7 @@
                     "X-CSRF-TOKEN": csrfToken,
                     "X-Requested-With": "XMLHttpRequest"
                 },
-                body: JSON.stringify({ product_id: this.dataset.id })
+                body: JSON.stringify({ product_id: self.dataset.id })
             })
                 .then(function (response) {
                     if (response.status === 401 || response.redirected) {
@@ -831,39 +928,66 @@
                     self.disabled = false;
                     self.removeAttribute("aria-busy");
                 });
-        });
+        }
+
+        if (paginationLink) {
+            event.preventDefault();
+            updateProductsFromUrl(paginationLink.href, true);
+        }
     });
 
+    initializeVariationDefaults();
+
     productSection.querySelectorAll(".shop__filter-select").forEach(function (select) {
-        select.addEventListener("change", function () {
-            document.getElementById("filterForm").submit();
-        });
+        select.addEventListener("change", applyFilters);
     });
 
     var clearButton = productSection.querySelector(".shop__clear-btn");
     if (clearButton) {
         clearButton.addEventListener("click", function (event) {
             event.preventDefault();
+            resetFilters();
+        });
+    }
 
-            productSection.querySelectorAll("#filterForm input, #filterForm select").forEach(function (field) {
-                if (field.type === "number") {
-                    field.value = "";
-                } else {
-                    field.selectedIndex = 0;
-                }
-            });
-
-            document.getElementById("filterForm").submit();
+    var resetButton = productSection.querySelector(".shop__filters-reset");
+    if (resetButton) {
+        resetButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            resetFilters();
         });
     }
 
     var searchInput = productSection.querySelector(".shop__search-input");
+    var searchTimer;
     if (searchInput) {
+        searchInput.addEventListener("input", function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applyFilters, 300);
+        });
+
         searchInput.addEventListener("keypress", function (event) {
             if (event.key === "Enter") {
                 event.preventDefault();
-                document.getElementById("filterForm").submit();
+                clearTimeout(searchTimer);
+                applyFilters();
             }
+        });
+    }
+
+    var filterForm = document.getElementById("filterForm");
+    if (filterForm) {
+        filterForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            clearTimeout(searchTimer);
+            applyFilters();
+        });
+
+        filterForm.querySelectorAll(".shop__price-input").forEach(function (input) {
+            input.addEventListener("input", function () {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(applyFilters, 500);
+            });
         });
     }
 })();

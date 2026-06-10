@@ -16,7 +16,11 @@
 
 @section('content')
 
-<div class="admin-shell">
+<div
+    class="admin-shell"
+    data-home-page-settings
+    data-blank-preview="{{ e(\App\Models\HomePageSetting::imageUrl('')) }}"
+>
     <div class="admin-page-card">
         <div class="admin-page-card__header">
             <div>
@@ -553,102 +557,3 @@
 </div>
 
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const blankPreview = @json(\App\Models\HomePageSetting::imageUrl(''));
-        const labels = {
-            problem: 'Card',
-            solution: 'Solution Card',
-            why: 'Why Card',
-            stats: 'Stats Card',
-            story: 'Video Story'
-        };
-
-        function renumber(repeater) {
-            const type = repeater.dataset.repeater;
-            repeater.querySelectorAll('[data-repeater-item]').forEach(function (item, index) {
-                const title = item.querySelector('[data-repeater-title]');
-
-                if (title) {
-                    title.textContent = (labels[type] || 'Card') + ' ' + (index + 1);
-                }
-
-                item.querySelectorAll('[name]').forEach(function (field) {
-                    field.name = field.name.replace(/\[\d+\]/, '[' + index + ']');
-                });
-            });
-        }
-
-        function clearItem(item) {
-            item.querySelectorAll('input, textarea').forEach(function (field) {
-                if (field.type === 'file') {
-                    field.value = '';
-                    return;
-                }
-
-                field.value = field.name.includes('[url]') ? '#' : '';
-            });
-
-            item.querySelectorAll('.admin-logo-preview img').forEach(function (image) {
-                image.src = blankPreview;
-            });
-        }
-
-        document.querySelectorAll('[data-repeater-add]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const type = button.dataset.repeaterAdd;
-                const repeater = document.querySelector('[data-repeater="' + type + '"]');
-                const source = repeater ? repeater.querySelector('[data-repeater-item]:last-child') : null;
-
-                if (!repeater || !source) {
-                    return;
-                }
-
-                const clone = source.cloneNode(true);
-                clearItem(clone);
-                repeater.appendChild(clone);
-                renumber(repeater);
-
-                const firstField = clone.querySelector('input:not([type="hidden"]):not([type="file"]), textarea');
-                if (firstField) {
-                    firstField.focus();
-                }
-            });
-        });
-
-        document.addEventListener('click', function (event) {
-            const editButton = event.target.closest('[data-repeater-edit]');
-            const deleteButton = event.target.closest('[data-repeater-delete]');
-
-            if (editButton) {
-                const item = editButton.closest('[data-repeater-item]');
-                const firstField = item ? item.querySelector('input:not([type="hidden"]):not([type="file"]), textarea') : null;
-
-                if (firstField) {
-                    firstField.focus();
-                    firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-
-            if (deleteButton) {
-                const item = deleteButton.closest('[data-repeater-item]');
-                const repeater = item ? item.closest('[data-repeater]') : null;
-
-                if (!item || !repeater) {
-                    return;
-                }
-
-                if (repeater.querySelectorAll('[data-repeater-item]').length === 1) {
-                    clearItem(item);
-                } else {
-                    item.remove();
-                }
-
-                renumber(repeater);
-            }
-        });
-    });
-</script>
-@endpush
