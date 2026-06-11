@@ -17,6 +17,11 @@ class PaymentGateway extends Model
         'additional_config'
     ];
 
+    protected $hidden = [
+        'api_key',
+        'secret_key',
+    ];
+
     protected $casts = [
         'additional_config' => 'array',
         'is_enabled' => 'boolean'

@@ -106,6 +106,7 @@ class CustomerAuthController extends Controller
     public function logout(Request $request)
     {
         Auth::guard('customer')->logout();
+        $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('customer.login')
             ->with('success', 'You have been logged out.');
