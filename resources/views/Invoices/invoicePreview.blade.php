@@ -24,6 +24,7 @@
     });
     $tax = (float) ($order->tax_amount ?? 0);
     $tax = $tax > 0 ? $tax : $itemTax;
+    $canDownloadInvoices = (auth()->user()?->role ?? null) === 'super-admin';
 @endphp
 
 @section('content')
@@ -88,7 +89,9 @@
                 <p class="text-secondary-light mb-0">{{ optional($order->created_at)->format('d M Y') }}</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
+                @if($canDownloadInvoices)
+                    <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
+                @endif
                 <a href="{{ route('dashboard.orders.show', $order->order_number) }}" class="btn btn-sm btn-outline-primary">View Order</a>
                 <button type="button" class="btn btn-sm btn-primary" onclick="printInvoice()">Print</button>
             </div>

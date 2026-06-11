@@ -72,8 +72,9 @@ class Product extends Model
         if (!$this->manage_stock) return true;
 
         // If has variations — check variation stock
-        if ($this->variations->count() > 0) {
-            return $this->variations->where('is_active', true)->sum('stock_quantity') > 0;
+        $variationStock = $this->variationStockSummary();
+        if ($variationStock['count'] > 0) {
+            return $variationStock['active_stock'] > 0;
         }
 
         return $this->stock_quantity > 0;
@@ -83,11 +84,34 @@ class Product extends Model
     {
         if (!$this->manage_stock) return false;
 
-        if ($this->variations->count() > 0) {
-            return $this->variations->where('is_active', true)->sum('stock_quantity') <= $threshold;
+        $variationStock = $this->variationStockSummary();
+        if ($variationStock['count'] > 0) {
+            return $variationStock['active_stock'] <= $threshold;
         }
 
         return $this->stock_quantity <= $threshold && $this->stock_quantity > 0;
+    }
+
+    private function variationStockSummary(): array
+    {
+        if ($this->relationLoaded('variations')) {
+            return [
+                'count' => $this->variations->count(),
+                'active_stock' => (int) $this->variations->where('is_active', true)->sum('stock_quantity'),
+            ];
+        }
+
+        $summary = $this->variations()
+            ->selectRaw("
+                COUNT(*) as variation_count,
+                COALESCE(SUM(CASE WHEN is_active = 1 THEN stock_quantity ELSE 0 END), 0) as active_stock
+            ")
+            ->first();
+
+        return [
+            'count' => (int) ($summary->variation_count ?? 0),
+            'active_stock' => (int) ($summary->active_stock ?? 0),
+        ];
     }
 
     // ── Price Helpers ──────────────────────────────────────

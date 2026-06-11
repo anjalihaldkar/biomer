@@ -20,7 +20,7 @@ class CustomerAuthController extends Controller
         }
 
         $redirect = request('redirect');
-        if (is_string($redirect) && str_starts_with($redirect, url('/'))) {
+        if (is_string($redirect) && $this->isSafeRedirectUrl($redirect)) {
             session()->put('url.intended', $redirect);
         }
 
@@ -77,8 +77,10 @@ class CustomerAuthController extends Controller
             'name'                  => 'required|string|max:255',
             'email'                 => 'required|email|unique:customers,email',
             'phone'                 => 'nullable|string|max:15',
-            'password'              => 'required|min:6|confirmed',
+            'password'              => ['required', 'min:8', 'confirmed', 'regex:/^(?=.*[a-zA-Z])(?=.*[0-9])/'],
             'password_confirmation' => 'required',
+        ], [
+            'password.regex' => 'Password must contain at least one letter and one number.',
         ]);
 
         $customer = Customer::create([
@@ -110,5 +112,22 @@ class CustomerAuthController extends Controller
         $request->session()->regenerateToken();
         return redirect()->route('customer.login')
             ->with('success', 'You have been logged out.');
+    }
+
+    private function isSafeRedirectUrl(string $redirect): bool
+    {
+        $parsedRedirect = parse_url($redirect);
+
+        if ($parsedRedirect === false) {
+            return false;
+        }
+
+        $redirectHost = $parsedRedirect['host'] ?? null;
+
+        if ($redirectHost === null) {
+            return str_starts_with($redirect, '/') && !str_starts_with($redirect, '//');
+        }
+
+        return strtolower($redirectHost) === strtolower(parse_url(url('/'), PHP_URL_HOST) ?? '');
     }
 }

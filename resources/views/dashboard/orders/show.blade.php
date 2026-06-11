@@ -5,6 +5,7 @@
     $title    = 'Order Detail';
     $subTitle = 'Order Detail';
     $script   = '';
+    $canDownloadInvoices = (auth()->user()?->role ?? null) === 'super-admin';
 @endphp
 
 @section('content')
@@ -31,11 +32,13 @@
             <div class="d-flex align-items-center gap-3 flex-wrap">
 
                 {{-- ── Download Invoice Button ── --}}
-                <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}"
-                   class="btn btn-success btn-sm px-16" target="_blank">
-                    
-                    Download Invoice
-                </a>
+                @if($canDownloadInvoices)
+                    <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}"
+                       class="btn btn-success btn-sm px-16" target="_blank">
+                        
+                        Download Invoice
+                    </a>
+                @endif
 
                 {{-- ── AJAX Status Changer ── --}}
                 <label class="fw-semibold mb-0">Status:</label>

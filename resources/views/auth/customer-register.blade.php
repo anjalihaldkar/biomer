@@ -54,7 +54,7 @@
               <label class="auth__label">Password <span class="auth__required">*</span></label>
               <input type="password" name="password"
                      class="auth__input {{ $errors->has('password') ? 'auth__input--error' : '' }}"
-                     placeholder="Min. 6 characters" required>
+                     placeholder="8+ characters with letters and numbers" minlength="8" required>
               @error('password')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 

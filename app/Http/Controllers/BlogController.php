@@ -14,7 +14,7 @@ class BlogController extends Controller
 {
     public function blog()
     {
-        $blogs = Blog::with('category')->latest()->get();
+        $blogs = Blog::with('category')->latest()->paginate(20);
         return view('blog/blog', compact('blogs'));
     }
 

@@ -58,7 +58,9 @@ Route::get('/products/{product:slug}', [ProductController::class , 'shopShow'])-
 
 Route::get('/blogs', [BlogController::class, 'frontendIndex'])->name('frontend.blog.index');
 Route::get('/blogs/{slug}', [BlogController::class, 'frontendDetails'])->name('frontend.blog.show');
-Route::post('/audience-preference', [AudiencePreferenceController::class, 'store'])->name('audience-preference.store');
+Route::post('/audience-preference', [AudiencePreferenceController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('audience-preference.store');
 // ── Dynamic Pages with SEO ────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════════
@@ -118,7 +120,6 @@ Route::middleware('customer.auth')->group(function () {
     // ── Order Returns (customer login required) ──────────────────
     Route::get('/order-returns', [OrderReturnController::class, 'index'])->name('order-returns.index');
     Route::get('/order-returns/create/{orderNumber}', [OrderReturnController::class, 'create'])->name('order-returns.create');
-    Route::get('/order-returns/store/{orderNumber}', fn ($orderNumber) => redirect()->route('order-returns.create', $orderNumber));
     Route::post('/order-returns/store/{orderNumber}', [OrderReturnController::class, 'store'])->name('order-returns.store');
     Route::get('/order-returns/{id}', [OrderReturnController::class, 'show'])->name('order-returns.show');
 
@@ -302,7 +303,7 @@ Route::middleware(['admin.auth'])->group(function () {
         Route::get(
             '/dashboard/orders/{orderNumber}/invoice',
             [InvoiceController::class , 'downloadAdmin']
-        )->name('dashboard.orders.invoice');
+        )->middleware('throttle:10,1')->name('dashboard.orders.invoice');
     
         // ── Dashboard ─────────────────────────────────────────────────────
         Route::prefix('dashboard')->group(function () {

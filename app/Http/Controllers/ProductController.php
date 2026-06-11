@@ -547,13 +547,31 @@ public function shopIndex(Request $request)
     $sortBy = $request->get('sort', 'latest');
     switch ($sortBy) {
         case 'price_low':
-            $query->orderByRaw('(SELECT MIN(price) FROM product_variations WHERE product_variations.product_id = products.id) ASC, base_price ASC');
+            $variationPrices = DB::table('product_variations')
+                ->select('product_id', DB::raw('MIN(price) as min_price'))
+                ->groupBy('product_id');
+
+            $query->leftJoinSub($variationPrices, 'variation_prices', function ($join) {
+                    $join->on('products.id', '=', 'variation_prices.product_id');
+                })
+                ->select('products.*')
+                ->orderByRaw('COALESCE(variation_prices.min_price, products.base_price) ASC')
+                ->orderBy('products.base_price');
             break;
         case 'price_high':
-            $query->orderByRaw('(SELECT MAX(price) FROM product_variations WHERE product_variations.product_id = products.id) DESC, base_price DESC');
+            $variationPrices = DB::table('product_variations')
+                ->select('product_id', DB::raw('MAX(price) as max_price'))
+                ->groupBy('product_id');
+
+            $query->leftJoinSub($variationPrices, 'variation_prices', function ($join) {
+                    $join->on('products.id', '=', 'variation_prices.product_id');
+                })
+                ->select('products.*')
+                ->orderByRaw('COALESCE(variation_prices.max_price, products.base_price) DESC')
+                ->orderByDesc('products.base_price');
             break;
         case 'name':
-            $query->orderBy('name');
+            $query->orderBy('products.name');
             break;
         case 'latest':
         default:

@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\SiteSetting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
@@ -107,7 +108,7 @@ class InvoiceController extends Controller
 
     private function invoiceCompany(): array
     {
-        $settings = SiteSetting::first();
+        $settings = Cache::remember('site_settings', now()->addHour(), fn () => SiteSetting::first());
         $storageLogo = $settings?->logo_path ? public_path('storage/' . $settings->logo_path) : null;
         $publicLogo = public_path('assets/images/home-img/bb logo.png');
         $assetLogo = $settings?->logo_path ? asset('storage/' . $settings->logo_path) : asset('assets/images/home-img/bb logo.png');

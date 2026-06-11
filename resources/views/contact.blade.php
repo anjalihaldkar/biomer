@@ -78,6 +78,14 @@
           @csrf
           <h3 class="conif__form-title">Send us a Message</h3>
 
+          @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+          @endif
+
+          @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+          @endif
+
           <div class="conif__field-wrap">
             <label for="contact_name" class="conif__label">Full Name</label>
             <input

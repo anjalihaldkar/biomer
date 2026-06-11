@@ -14,13 +14,12 @@ class CustomerDashboardController extends Controller
     {
         $customer = Auth::guard('customer')->user();
 
-        $orders          = $customer->orders()->latest()->get();
-        $totalOrders     = $orders->count();
-        $completedOrders = $orders->where('status', 'delivered')->count();
-        $pendingOrders   = $orders->whereIn('status', ['pending', 'confirmed', 'processing', 'shipped'])->count();
-        $cancelledOrders = $orders->where('status', 'cancelled')->count();
+        $totalOrders     = $customer->orders()->count();
+        $completedOrders = $customer->orders()->where('status', 'delivered')->count();
+        $pendingOrders   = $customer->orders()->whereIn('status', ['pending', 'confirmed', 'processing', 'shipped'])->count();
+        $cancelledOrders = $customer->orders()->where('status', 'cancelled')->count();
         $totalWishlist   = $customer->wishlists()->count();
-        $recentOrders    = $orders->take(5);
+        $recentOrders    = $customer->orders()->latest()->take(5)->get();
 
         return view('dashboard', compact(
             'customer',

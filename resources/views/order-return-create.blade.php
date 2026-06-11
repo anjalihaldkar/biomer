@@ -27,8 +27,8 @@
                 </div>
 
                 @php
-                    $selectedOrderItemId = old('order_item_id', optional($order->orderItems->first())->id);
-                    $selectedOrderItem = $order->orderItems->firstWhere('id', (int) $selectedOrderItemId) ?? $order->orderItems->first();
+                    $selectedOrderItemId = old('order_item_id', optional($order->items->first())->id);
+                    $selectedOrderItem = $order->items->firstWhere('id', (int) $selectedOrderItemId) ?? $order->items->first();
                     $selectedRefundMax = (float) ($selectedOrderItem?->subtotal ?? 0);
                 @endphp
 
@@ -39,7 +39,7 @@
                     <div class="orc__section">
                         <h3 class="orc__section-title">Select Item to Return</h3>
                         <div class="orc__items">
-                            @foreach($order->orderItems as $item)
+                            @foreach($order->items as $item)
                             <label class="orc__item">
                                 <input type="radio" name="order_item_id" value="{{ $item->id }}"
                                        data-refund-amount="{{ number_format((float) $item->subtotal, 2, '.', '') }}"

@@ -31,7 +31,7 @@
         <div class="admin-section-card mt-4">
             <div class="admin-section-card__header d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <h5 class="card-title mb-0">All Blog Posts</h5>
-                <span class="text-muted small">{{ $blogs->count() }} posts</span>
+                <span class="text-muted small">{{ $blogs->total() }} posts</span>
             </div>
             <div class="admin-section-card__body">
                 <div class="table-responsive">
@@ -49,9 +49,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($blogs as $blog)
+                            @forelse ($blogs as $blog)
                                 <tr>
-                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ $blogs->firstItem() + $loop->index }}</td>
                                     <td>
                                         <img src="{{ $blog->thumbnail_url }}"
                                             alt=""
@@ -104,32 +104,22 @@
                                         </div>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">No blog posts found.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
+                @if($blogs->hasPages())
+                    <div class="d-flex justify-content-center mt-4">
+                        {{ $blogs->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
 
 @endsection
-
-@push('scripts')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script>
-    $('#blogsTable').DataTable({
-        pageLength: 10,
-        order: [[0, 'asc']],
-        columnDefs: [
-            { orderable: false, targets: [1, 7] }
-        ],
-        language: {
-            search: 'Search posts:',
-            lengthMenu: 'Show _MENU_ posts',
-        }
-    });
-</script>
-@endpush

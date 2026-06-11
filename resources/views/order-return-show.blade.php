@@ -51,7 +51,7 @@
                     <div class="ors__section">
                         <h3 class="ors__section-title">Order Items</h3>
                         <div class="ors__items">
-                            @foreach($return->order->orderItems as $item)
+                            @foreach($return->order->items as $item)
                             <div class="ors__item">
                                 @if($item->product->featured_image)
                                     <img src="{{ Storage::url($item->product->featured_image) }}" alt="{{ $item->product->name }}" class="ors__item-img">

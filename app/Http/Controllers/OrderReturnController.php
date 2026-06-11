@@ -25,7 +25,7 @@ class OrderReturnController extends Controller
     {
         $order = Order::where('order_number', $orderNumber)
             ->where('customer_id', Auth::guard('customer')->id())
-            ->with(['orderItems.product'])
+            ->with(['items.product'])
             ->firstOrFail();
 
         // Only allow returns for delivered orders within 30 days
@@ -40,7 +40,7 @@ class OrderReturnController extends Controller
     {
         $order = Order::where('order_number', $orderNumber)
             ->where('customer_id', Auth::guard('customer')->id())
-            ->with(['orderItems'])
+            ->with(['items'])
             ->firstOrFail();
 
         // Validate return request
@@ -48,7 +48,7 @@ class OrderReturnController extends Controller
             return back()->withErrors(['error' => 'Returns are only allowed for delivered orders within 30 days.']);
         }
 
-        $orderItemIds = $order->orderItems->pluck('id')->all();
+        $orderItemIds = $order->items->pluck('id')->all();
 
         $validator = Validator::make($request->all(), [
             'order_item_id' => [
@@ -67,7 +67,7 @@ class OrderReturnController extends Controller
         }
 
         $validated = $validator->validated();
-        $selectedItem = $order->orderItems->firstWhere('id', (int) $validated['order_item_id']);
+        $selectedItem = $order->items->firstWhere('id', (int) $validated['order_item_id']);
         if (!$selectedItem) {
             return back()->withErrors(['order_item_id' => 'Please select a valid order item.'])->withInput();
         }
@@ -105,7 +105,7 @@ class OrderReturnController extends Controller
     {
         $return = OrderReturn::where('id', $id)
             ->where('customer_id', Auth::guard('customer')->id())
-            ->with(['order.orderItems.product'])
+            ->with(['order.items.product'])
             ->firstOrFail();
 
         return view('order-return-show', compact('return'));
