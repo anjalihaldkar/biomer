@@ -54,8 +54,8 @@ SCRIPT;
             <div class="admin-page-card__header">
                 <div>
                     <span class="admin-page-card__eyebrow">Content Editor</span>
-                    <h2 class="admin-page-card__title">{{ isset($blog) ? 'Edit Blog Post' : 'Add Blog Post' }}</h2>
-                    <p class="admin-page-card__desc">Use the same admin card layout while editing content, SEO fields, status, and thumbnail assets.</p>
+                    <!-- <h2 class="admin-page-card__title">{{ isset($blog) ? 'Edit Blog Post' : 'Add Blog Post' }}</h2>
+                    <p class="admin-page-card__desc">Use the same admin card layout while editing content, SEO fields, status, and thumbnail assets.</p> -->
                 </div>
                 <div class="admin-page-card__actions">
                     <a href="{{ route('blog') }}" class="btn btn-outline-secondary">Back To Posts</a>

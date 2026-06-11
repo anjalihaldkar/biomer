@@ -1,3 +1,14 @@
+@php
+    $productsOpen = request()->routeIs('dashboard.products.*', 'dashboard.categories.*', 'dashboard.attributes.*', 'dashboard.brands.*', 'dashboard.tags.*', 'dashboard.variations.*');
+    $couponsOpen = request()->routeIs('dashboard.coupons.*');
+    $reviewsOpen = request()->routeIs('dashboard.reviews.*');
+    $taxesOpen = request()->routeIs('dashboard.taxes.*');
+    $ordersOpen = request()->routeIs('dashboard.orders.*', 'dashboard.returns.*');
+    $customersOpen = request()->routeIs('dashboard.customers.*', 'dashboard.audience-preferences.*');
+    $blogsOpen = request()->routeIs('blog', 'addBlog', 'editBlog', 'blogDetails', 'blog-categories.*', 'dashboard.blog-reviews.*');
+    $settingsOpen = request()->routeIs('dashboard.home-page.*', 'dashboard.site-settings.*', 'dashboard.google-analytics.*', 'dashboard.header-links.*', 'dashboard.footer-links.*', 'dashboard.pages.*', 'paymentGateway');
+@endphp
+
 <aside class="sidebar">
     <button type="button" class="sidebar-close-btn">
         <i class="ri-close-line"></i>
@@ -29,7 +40,7 @@
                     <span>Invoice</span>
                 </a>
             </li>
-            <li class="dropdown">
+            <li class="dropdown {{ $productsOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-box-3-line menu-icon"></i>
                     <span>Products</span>
@@ -58,7 +69,7 @@
                 </ul>
             </li>
 
-            <li class="dropdown">
+            <li class="dropdown {{ $couponsOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-coupon-3-line menu-icon"></i>
                     <span>Coupons</span>
@@ -71,7 +82,7 @@
                 </ul>
             </li>
 
-            <li class="dropdown">
+            <li class="dropdown {{ $reviewsOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-star-line menu-icon"></i>
                     <span>Reviews</span>
@@ -88,7 +99,7 @@
                 </ul>
             </li>
 
-            <li class="dropdown">
+            <li class="dropdown {{ $taxesOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-calculator-line menu-icon"></i>
                     <span>Taxes (GST)</span>
@@ -101,7 +112,7 @@
                 </ul>
             </li>
 
-            <li class="dropdown">
+            <li class="dropdown {{ $ordersOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-shopping-bag-3-line menu-icon"></i>
                     <span>Orders</span>
@@ -120,7 +131,7 @@
                 </ul>
             </li>
 
-            <li class="dropdown">
+            <li class="dropdown {{ $customersOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-group-line menu-icon"></i>
                     <span>Customers</span>
@@ -138,7 +149,7 @@
                     </li>
                 </ul>
             </li>
-            <li class="dropdown">
+            <li class="dropdown {{ $blogsOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-news-line text-xl me-6 d-flex w-auto"></i>
                     <span>Blog Management</span>
@@ -166,7 +177,7 @@
                     </li>
                 </ul>
             </li>
-             <li class="dropdown">
+             <li class="dropdown {{ $settingsOpen ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <i class="ri-settings-3-line menu-icon"></i>
                     <span>Settings</span>

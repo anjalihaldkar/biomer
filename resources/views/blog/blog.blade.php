@@ -12,8 +12,7 @@
         <div class="admin-page-card__header">
             <div>
                 <span class="admin-page-card__eyebrow">Content Management</span>
-                <h2 class="admin-page-card__title">Blog Management</h2>
-                <p class="admin-page-card__desc">All blog data now sits inside the same card pattern as the settings pages, so the layout stays consistent while the content changes.</p>
+                
             </div>
             <div class="admin-page-card__actions">
                 <a href="{{ route('addBlog') }}" class="btn btn-primary d-flex align-items-center gap-2">

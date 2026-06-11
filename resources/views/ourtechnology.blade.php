@@ -1,8 +1,8 @@
 
 @extends('layout.frontlayout')
-@section('title', 'Our Technology – Bharat Biomer')
-@section('seo_description', 'Discover Bharat Biomer’s PPFM technology and how our biological innovations improve crop growth, resilience, and soil health.')
-@section('seo_keywords', 'PPFM technology, agriculture biotechnology, crop resilience, soil health, Bharat Biomer technology')
+@section('title', $pageSeo?->meta_title ?: 'Our Technology – Bharat Biomer')
+@section('seo_description', $pageSeo?->meta_description ?: 'Discover Bharat Biomer’s PPFM technology and how our biological innovations improve crop growth, resilience, and soil health.')
+@section('seo_keywords', $pageSeo?->meta_keyword ?: 'PPFM technology, agriculture biotechnology, crop resilience, soil health, Bharat Biomer technology')
 
 @section('content')
   <!-- ========================

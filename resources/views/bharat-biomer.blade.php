@@ -1,7 +1,8 @@
 @extends('layout.frontlayout')
 
-@section('title', 'Bharat Biomer | Nature-powered Biological Solutions')
-@section('seo_description', 'Biological farming solutions for better yield, crop health, and soil vitality.')
+@section('title', $pageSeo?->meta_title ?: 'Bharat Biomer | Nature-powered Biological Solutions')
+@section('seo_description', $pageSeo?->meta_description ?: 'Biological farming solutions for better yield, crop health, and soil vitality.')
+@section('seo_keywords', $pageSeo?->meta_keyword ?: '')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('assets/css/frontend.css') }}?v={{ filemtime(public_path('assets/css/frontend.css')) }}">
@@ -199,38 +200,56 @@
         </section>
 
         <section class="section stories" id="stories">
+            @php
+                $storyCards = collect($homePageConfig['story_items'])->map(function ($item) {
+                    $storyVideoUrl = \App\Models\HomePageSetting::videoEmbedUrl($item['video_url'] ?? '');
+                    $hasStoryContent = trim(($item['heading'] ?? '') . ($item['paragraph'] ?? '') . ($item['thumbnail_path'] ?? '') . ($storyVideoUrl ?? '')) !== '';
+
+                    return [
+                        'item' => $item,
+                        'video_url' => $storyVideoUrl,
+                        'has_content' => $hasStoryContent,
+                    ];
+                })->filter(fn ($storyCard) => $storyCard['has_content'])->values();
+            @endphp
             <div class="wrap">
                 <h2 class="title">{{ $homePageConfig['story_heading'] }}</h2>
                 <p class="sub">{{ $homePageConfig['story_paragraph'] }}</p>
                 <div class="stories-grid">
-                    @foreach($homePageConfig['story_items'] as $item)
+                    @foreach($storyCards as $index => $storyCard)
                         @php
-                            $storyVideoUrl = \App\Models\HomePageSetting::videoEmbedUrl($item['video_url'] ?? '');
-                            $hasStoryContent = trim(($item['heading'] ?? '') . ($item['paragraph'] ?? '') . ($item['thumbnail_path'] ?? '') . ($storyVideoUrl ?? '')) !== '';
+                            $item = $storyCard['item'];
+                            $storyVideoUrl = $storyCard['video_url'];
                         @endphp
-                        @if($hasStoryContent)
-                            <article class="story">
-                                <div class="story-img"
-                                    style="background-image: url('{{ \App\Models\HomePageSetting::imageUrl($item['thumbnail_path'] ?? '') }}'); background-position: center; background-size: cover;">
-                                    @if($storyVideoUrl !== '')
-                                        <iframe src="{{ $storyVideoUrl }}" title="{{ $item['heading'] ?: 'Field story video' }}"
-                                            loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                            allowfullscreen></iframe>
-                                    @else
-                                        <div class="person"></div>
-                                        <div class="play"></div>
-                                        @if(! empty($item['duration']))
-                                            <span class="duration">{{ $item['duration'] }}</span>
-                                        @endif
+                        <article class="story {{ $index >= 3 ? 'story--extra is-hidden' : '' }}" @if($index >= 3) data-story-extra @endif>
+                            <div class="story-img {{ $storyVideoUrl !== '' ? 'story-img--video' : '' }}"
+                                @if($storyVideoUrl !== '') data-story-video="{{ $storyVideoUrl }}" @endif
+                                data-story-title="{{ $item['heading'] ?: 'Field story video' }}"
+                                style="background-image: url('{{ \App\Models\HomePageSetting::imageUrl($item['thumbnail_path'] ?? '') }}'); background-position: center; background-size: cover;">
+                                @if($storyVideoUrl !== '')
+                                    <button type="button" class="play" aria-label="Play {{ $item['heading'] ?: 'field story video' }}"></button>
+                                    @if(! empty($item['duration']))
+                                        <span class="duration">{{ $item['duration'] }}</span>
                                     @endif
-                                </div>
-                                <h3>{{ $item['heading'] }}</h3>
-                                <p>{{ $item['paragraph'] }}</p>
-                            </article>
-                        @endif
+                                @else
+                                    <div class="person"></div>
+                                @endif
+                            </div>
+                            <h3>{{ $item['heading'] }}</h3>
+                            <p>{{ $item['paragraph'] }}</p>
+                        </article>
                     @endforeach
                 </div>
-                @if(! empty($homePageConfig['story_button_text']))
+                @if($storyCards->count() > 3)
+                    <div class="stories-actions" style="text-align:center;margin-top:28px">
+                        <button type="button" class="bb-home-btn secondary stories-toggle" data-stories-more data-more-text="{{ $homePageConfig['story_button_text'] ?: 'View More Stories' }}">
+                            <span>{{ $homePageConfig['story_button_text'] ?: 'View More Stories' }}</span> <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="bb-home-btn secondary stories-toggle is-hidden" data-stories-less>
+                            <span>View Less</span> <i class="fa fa-long-arrow-up" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                @elseif(! empty($homePageConfig['story_button_text']))
                     <div style="text-align:center;margin-top:28px">
                         <a class="bb-home-btn secondary" href="{{ $homePageConfig['story_button_url'] ?: '#' }}">
                             {{ $homePageConfig['story_button_text'] }} <i class="fa fa-long-arrow-right" aria-hidden="true"></i>

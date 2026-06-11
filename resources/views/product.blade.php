@@ -1,5 +1,7 @@
 @extends('layout.frontlayout')
-@section('title', 'Shop – Bharat Biomer Products')
+@section('title', $pageSeo?->meta_title ?: 'Shop – Bharat Biomer Products')
+@section('seo_description', $pageSeo?->meta_description ?: 'Shop Bharat Biomer biological farming products for crop health, soil vitality, and better yield.')
+@section('seo_keywords', $pageSeo?->meta_keyword ?: '')
 
 @section('body_class', 'shop-page no-product-motion')
 

@@ -934,6 +934,39 @@
             background: linear-gradient(135deg, #a9d36f, #246f32)
         }
 
+        .story-img--video {
+            cursor: pointer;
+        }
+
+        .story-img iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: #000;
+        }
+
+        .story.is-hidden {
+            display: none;
+        }
+
+        .stories-toggle.is-hidden {
+            display: none;
+        }
+
+        .stories-toggle {
+            border: 1px solid #cfe0ce;
+        }
+
+        .stories-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
         .story:nth-child(2) .story-img {
             background: linear-gradient(135deg, #d7eeb8, #7ba436)
         }
@@ -959,7 +992,12 @@
             position: absolute;
             inset: 0;
             display: grid;
-            place-items: center
+            place-items: center;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            z-index: 2
         }
 
         .play:before {

@@ -12,8 +12,8 @@
         <div class="admin-page-card__header">
             <div>
                 <span class="admin-page-card__eyebrow">Tracking Setup</span>
-                <h2 class="admin-page-card__title">Google Analytics</h2>
-                <p class="admin-page-card__desc">Add or update your Google Analytics measurement ID. It is loaded automatically on the frontend when this field is filled.</p>
+                <!-- <h2 class="admin-page-card__title">Google Analytics</h2>
+                <p class="admin-page-card__desc">Add or update your Google Analytics measurement ID. It is loaded automatically on the frontend when this field is filled.</p> -->
             </div>
             <div class="admin-page-card__actions">
                 <a href="{{ route('dashboard.home-page.edit') }}" class="btn btn-outline-secondary">Home Page</a>

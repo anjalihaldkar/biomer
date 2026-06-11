@@ -483,6 +483,11 @@ class OrderController extends Controller
             return response()->json(['error' => 'Cashfree did not return a valid payment_session_id. Please check Cashfree configuration and logs.'], 500);
         }
 
+        // ── SECURITY: Bind the Cashfree order_id to this session so that
+        //   verifyCashfreePayment() can confirm the GET parameter was not
+        //   tampered with (prevents cross-user order_id hijacking).
+        session()->put('cashfree_pending_order_id', $orderId);
+
         return response()->json([
             'success' => true,
             'payment_session_id' => $data['payment_session_id'],
@@ -498,9 +503,25 @@ class OrderController extends Controller
             return response()->json(['error' => 'Cashfree is disabled. Please select an enabled payment method.'], 422);
         }
 
-        $orderId = $request->input('order_id');
-        if (!$orderId)
-            return response()->json(['error' => 'Missing order ID.'], 422);
+        $orderId          = $request->input('order_id');
+        $sessionOrderId   = session()->get('cashfree_pending_order_id');
+
+        // ── SECURITY: Reject if the order_id in the GET parameter does not
+        //   match the one this session generated in Step 1. This prevents an
+        //   attacker from crafting a URL with a foreign Cashfree order_id and
+        //   hijacking another customer's payment to create a free order.
+        if (!$orderId || !$sessionOrderId || !hash_equals((string) $sessionOrderId, (string) $orderId)) {
+            Log::warning('Cashfree verify: order_id mismatch or missing session binding.', [
+                'received'  => $orderId,
+                'expected'  => $sessionOrderId,
+                'customer'  => $this->customer()?->id,
+                'ip'        => $request->ip(),
+            ]);
+            return response()->json(['error' => 'Invalid or expired payment session. Please start checkout again.'], 422);
+        }
+
+        // Clear the pending order ID so this session cannot be replayed.
+        session()->forget('cashfree_pending_order_id');
 
         // Verify with Cashfree server-side
         $response = $this->cashfreeRequest($gateway)

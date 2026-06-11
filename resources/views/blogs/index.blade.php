@@ -1,8 +1,8 @@
 @extends('layout.frontlayout')
 
-@section('title', 'Blog Insights - Bharat Biomer')
-@section('seo_description', 'Explore the latest blog posts from Bharat Biomer on sustainable agriculture, biotech solutions, and farm innovation.')
-@section('seo_keywords', 'Bharat Biomer blog, agriculture blog, biotech news, farming tips, sustainable agriculture')
+@section('title', $pageSeo?->meta_title ?: 'Blog Insights - Bharat Biomer')
+@section('seo_description', $pageSeo?->meta_description ?: 'Explore the latest blog posts from Bharat Biomer on sustainable agriculture, biotech solutions, and farm innovation.')
+@section('seo_keywords', $pageSeo?->meta_keyword ?: 'Bharat Biomer blog, agriculture blog, biotech news, farming tips, sustainable agriculture')
 
 @section('content')
  <!-- ========================

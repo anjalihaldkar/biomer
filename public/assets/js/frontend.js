@@ -50,6 +50,60 @@
         }).join("");
     }
 
+    function withAutoplay(url) {
+        if (!url) return "";
+
+        var separator = url.indexOf("?") === -1 ? "?" : "&";
+        return url + separator + "autoplay=1&rel=0";
+    }
+
+    function playStoryVideo(card) {
+        var videoUrl = card.getAttribute("data-story-video");
+        if (!videoUrl || card.querySelector("iframe")) return;
+
+        var iframe = document.createElement("iframe");
+        iframe.src = withAutoplay(videoUrl);
+        iframe.title = card.getAttribute("data-story-title") || "Field story video";
+        iframe.loading = "lazy";
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+
+        card.innerHTML = "";
+        card.style.backgroundImage = "none";
+        card.appendChild(iframe);
+    }
+
+    function initStoriesToggle() {
+        var moreButton = document.querySelector("[data-stories-more]");
+        var lessButton = document.querySelector("[data-stories-less]");
+        var stories = Array.prototype.slice.call(document.querySelectorAll(".stories-grid .story"));
+        var visibleCount = 3;
+        var step = 3;
+
+        if (!moreButton || !lessButton || stories.length <= visibleCount) return;
+
+        function renderStories() {
+            stories.forEach(function (story, index) {
+                story.classList.toggle("is-hidden", index >= visibleCount);
+            });
+
+            moreButton.classList.toggle("is-hidden", visibleCount >= stories.length);
+            lessButton.classList.toggle("is-hidden", visibleCount <= step);
+        }
+
+        moreButton.addEventListener("click", function () {
+            visibleCount = Math.min(visibleCount + step, stories.length);
+            renderStories();
+        });
+
+        lessButton.addEventListener("click", function () {
+            visibleCount = Math.max(visibleCount - step, step);
+            renderStories();
+        });
+
+        renderStories();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         var crop = document.getElementById("cropSelect");
 
@@ -57,6 +111,13 @@
             crop.addEventListener("change", renderCropSolutions);
         }
 
+        document.querySelectorAll(".story-img[data-story-video]").forEach(function (card) {
+            card.addEventListener("click", function () {
+                playStoryVideo(card);
+            });
+        });
+
+        initStoriesToggle();
         renderCropSolutions();
     });
 })();

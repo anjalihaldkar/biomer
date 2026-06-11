@@ -25,8 +25,8 @@
         <div class="admin-page-card__header">
             <div>
                 <span class="admin-page-card__eyebrow">Website Setup</span>
-                <h2 class="admin-page-card__title">Home Page</h2>
-                <p class="admin-page-card__desc">Edit the homepage sections one by one. This step controls the farming challenges section.</p>
+                <!-- <h2 class="admin-page-card__title">Home Page</h2>
+                <p class="admin-page-card__desc">Edit the homepage sections one by one. This step controls the farming challenges section.</p> -->
             </div>
             <div class="admin-page-card__actions">
                 <a href="{{ route('dashboard.site-settings.edit') }}" class="btn btn-outline-secondary">Site Settings</a>

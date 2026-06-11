@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\FooterLink;
 use App\Models\HeaderLink;
+use App\Models\Page;
 use App\Models\SiteSetting;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +33,28 @@ class AppServiceProvider extends ServiceProvider
                 'headerLinks' => $headerLinks->isNotEmpty() ? $headerLinks : $this->defaultHeaderLinks(),
                 'footerLinks' => $footerLinks->isNotEmpty() ? $footerLinks : $this->defaultFooterLinks(),
             ]);
+        });
+
+        View::composer([
+            'bharat-biomer',
+            'product',
+            'ourtechnology',
+            'about',
+            'blogs.index',
+            'contact',
+        ], function ($view) {
+            $seoPages = [
+                'bharat-biomer' => 'home',
+                'product' => 'products',
+                'ourtechnology' => 'technology',
+                'about' => 'about',
+                'blogs.index' => 'blog',
+                'contact' => 'contact',
+            ];
+
+            $slug = $seoPages[$view->getName()] ?? null;
+
+            $view->with('pageSeo', $slug ? Page::where('slug', $slug)->where('status', true)->first() : null);
         });
     }
 

@@ -6,17 +6,21 @@
   }
 
   // sidebar submenu collapsible js
-  $(".sidebar-menu .dropdown").on("click", function(){
-    var item = $(this);
-    item.siblings(".dropdown").children(".sidebar-submenu").slideUp();
+  $(".sidebar-menu .dropdown > a").on("click", function(event){
+    event.preventDefault();
+
+    var item = $(this).parent();
+    var isOpen = item.hasClass("open") || item.hasClass("dropdown-open");
+
+    item.siblings(".dropdown").children(".sidebar-submenu").stop(true, true).slideUp();
 
     item.siblings(".dropdown").removeClass("dropdown-open");
 
     item.siblings(".dropdown").removeClass("open");
 
-    item.children(".sidebar-submenu").slideToggle();
+    item.children(".sidebar-submenu").stop(true, true).slideToggle();
 
-    item.toggleClass("dropdown-open");
+    item.toggleClass("dropdown-open open", !isOpen);
   });
 
   $(".sidebar-toggle").on("click", function(){
