@@ -110,7 +110,9 @@ Route::middleware('customer.auth')->group(function () {
     Route::get('/my-orders', [OrderController::class , 'myOrders'])->name('orders.index');
     Route::get('/my-orders/{orderNumber}', [OrderController::class , 'show'])->name('orders.show');
     Route::post('/order/cashfree', [OrderController::class , 'createCashfreeOrder'])->name('order.cashfree');
-    Route::get('/order/cashfree/verify', [OrderController::class , 'verifyCashfreePayment'])->name('order.cashfree.verify');
+    Route::get('/order/cashfree/verify', [OrderController::class , 'verifyCashfreePayment'])
+        ->name('order.cashfree.verify')
+        ->middleware('throttle:10,1');
     Route::post('/order/cod', [OrderController::class , 'createCodOrder'])->name('order.cod');
 
     // ── Order Returns (customer login required) ──────────────────

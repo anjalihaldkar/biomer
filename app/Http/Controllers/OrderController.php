@@ -629,56 +629,74 @@ class OrderController extends Controller
     // ── Payment Failed ─────────────────────────────────────────────────
     public function paymentFailed(Request $request)
     {
+        $customer = $this->customer();
+
+        if (!$customer) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
         $checkoutData = session()->get('checkout_data');
         $cart = session()->get('cart', []);
 
         // Create a failed order record for tracking
         if ($checkoutData && !empty($cart)) {
-            $coupon = session()->get('coupon');
-            $totals = $this->calculateCartTotals($cart, $coupon);
-            $total = $totals['total'];
+            try {
+                $order = DB::transaction(function () use ($checkoutData, $cart, $request, $customer) {
+                    $coupon = session()->get('coupon');
+                    $totals = $this->calculateCartTotals($cart, $coupon);
 
-            $customer = $this->customer();
-            $order = Order::create([
-                'customer_id' => $customer->id,
-                'order_number' => 'BB-' . strtoupper(uniqid()),
-                'name' => $checkoutData['name'],
-                'phone' => $checkoutData['phone'],
-                'email' => $checkoutData['email'] ?? $customer->email,
-                'address' => $checkoutData['address'],
-                'city' => $checkoutData['city'],
-                'state' => $checkoutData['state'],
-                'pincode' => $checkoutData['pincode'],
-                'notes' => $checkoutData['notes'],
-                'total_amount' => $total,
-                'shipping_amount' => collect($cart)->sum(fn($item) => ($item['shipping_charge'] ?? 0) * $item['quantity']),
-                'status' => 'cancelled',
-                'payment_status' => 'failed',
-                'payment_gateway' => $request->input('gateway', 'unknown'),
-            ]);
+                    $order = Order::create([
+                        'customer_id' => $customer->id,
+                        'order_number' => 'BB-' . strtoupper(uniqid()),
+                        'name' => $checkoutData['name'],
+                        'phone' => $checkoutData['phone'],
+                        'email' => $checkoutData['email'] ?? $customer->email,
+                        'address' => $checkoutData['address'],
+                        'city' => $checkoutData['city'],
+                        'state' => $checkoutData['state'],
+                        'pincode' => $checkoutData['pincode'],
+                        'notes' => $checkoutData['notes'] ?? null,
+                        'total_amount' => $totals['total'],
+                        'shipping_amount' => $totals['shippingTotal'],
+                        'tax_amount' => $totals['taxAmount'],
+                        'coupon_id' => $coupon['id'] ?? null,
+                        'discount_amount' => $totals['discount'],
+                        'net_amount' => $totals['total'],
+                        'status' => 'cancelled',
+                        'payment_status' => 'failed',
+                        'payment_gateway' => $request->input('gateway', 'unknown'),
+                    ]);
 
-            // Add order items
-            foreach ($cart as $item) {
-                $product = Product::find($item['product_id']);
-                $gstRate = (float) ($product?->tax_rate ?? $product?->gst_rate ?? 0);
-                $lineSubtotal = (float) $item['price'] * (int) $item['quantity'];
-                $lineTax = $gstRate > 0 ? ($lineSubtotal * $gstRate / 100) : 0;
+                    // Add order items
+                    foreach ($cart as $item) {
+                        $product = Product::find($item['product_id']);
+                        $gstRate = (float) ($product?->tax_rate ?? $product?->gst_rate ?? 0);
+                        $lineSubtotal = (float) $item['price'] * (int) $item['quantity'];
+                        $lineTax = $gstRate > 0 ? ($lineSubtotal * $gstRate / 100) : 0;
 
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'variation_id' => $item['variation_id'] ?? null,
-                    'product_name' => $item['name'],
-                    'variation_name' => $item['variation'] ?? null,
-                    'sku' => $item['sku'] ?? null,
-                    'unit_price' => $item['price'],
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $lineSubtotal,
-                    'shipping_charge' => $item['shipping_charge'] ?? 0,
-                    'gst_rate' => $gstRate,
-                    'tax_amount' => $lineTax,
-                    'net_price' => $lineSubtotal,
-                ]);
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $item['product_id'],
+                            'variation_id' => $item['variation_id'] ?? null,
+                            'product_name' => $item['name'],
+                            'variation_name' => $item['variation'] ?? null,
+                            'sku' => $item['sku'] ?? null,
+                            'unit_price' => $item['price'],
+                            'quantity' => $item['quantity'],
+                            'subtotal' => $lineSubtotal,
+                            'shipping_charge' => $item['shipping_charge'] ?? 0,
+                            'gst_rate' => $gstRate,
+                            'tax_amount' => $lineTax,
+                            'net_price' => $lineSubtotal,
+                        ]);
+                    }
+
+                    return $order;
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to create failed order record: ' . $e->getMessage());
+
+                return response()->json(['error' => 'Payment failed, but the failed order record could not be saved.'], 500);
             }
 
             // Send order failed email
