@@ -20,6 +20,8 @@ use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    private const SAFE_IMAGE_RULE = 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:10240';
+
     // ── Index ──────────────────────────────────────────────────────────────
     public function index()
     {
@@ -65,8 +67,9 @@ class ProductController extends Controller
             'meta_title'        => 'nullable|string|max:255',
             'meta_description'  => 'nullable|string|max:500',
             'meta_keyword'      => 'nullable|string|max:500',
-            'featured_image'    => 'nullable|image|max:10240',
-            'gallery.*'         => 'nullable|image|max:10240',
+            'featured_image'    => self::SAFE_IMAGE_RULE,
+            'gallery.*'         => self::SAFE_IMAGE_RULE,
+            'variations.*.image'=> self::SAFE_IMAGE_RULE,
             'tags'              => 'nullable|array',
             'tags.*'            => 'string',
         ]);
@@ -251,8 +254,9 @@ class ProductController extends Controller
             'meta_title'        => 'nullable|string|max:255',
             'meta_description'  => 'nullable|string|max:500',
             'meta_keyword'      => 'nullable|string|max:500',
-            'featured_image'    => 'nullable|image|max:10240',
-            'gallery.*'         => 'nullable|image|max:10240',
+            'featured_image'    => self::SAFE_IMAGE_RULE,
+            'gallery.*'         => self::SAFE_IMAGE_RULE,
+            'variations.*.image'=> self::SAFE_IMAGE_RULE,
             'tags'              => 'nullable|array',
             'tags.*'            => 'string',
         ]);

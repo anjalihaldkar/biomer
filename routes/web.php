@@ -310,7 +310,9 @@ Route::middleware(['admin.auth'])->group(function () {
             // Main
             Route::get('/index', [DashboardController::class , 'index'])->name('index');
             Route::get('/analytics', [DashboardController::class , 'analytics'])->name('dashboard.analytics');
-            Route::get('/analytics/export', [DashboardController::class , 'exportAnalytics'])->name('dashboard.analytics.export');
+            Route::get('/analytics/export', [DashboardController::class , 'exportAnalytics'])
+                ->middleware('throttle:5,60')
+                ->name('dashboard.analytics.export');
 
             // Customers
             Route::get('/customers', [AdminCustomerController::class , 'index'])->name('dashboard.customers.index');

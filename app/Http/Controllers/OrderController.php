@@ -160,6 +160,7 @@ class OrderController extends Controller
             $coupon = $this->validatedCouponForOrder($cart);
             $totals = $this->calculateCartTotals($cart, $coupon);
 
+            // This locked check is authoritative; the pre-payment stock check is only a fast customer-facing gate.
             $this->reserveStock($cart);
 
             $orderData = [
@@ -312,6 +313,28 @@ class OrderController extends Controller
         }
     }
 
+    private function paidStockFailureResponse(Request $request, string $gateway, array $paymentIds, \RuntimeException $e)
+    {
+        Log::critical('Paid order failed during post-payment order creation. Manual refund review required.', [
+            'gateway' => $gateway,
+            'payment_ids' => $paymentIds,
+            'customer_id' => $this->customer()?->id,
+            'ip' => $request->ip(),
+            'reason' => $e->getMessage(),
+            'cart' => collect(session()->get('cart', []))->map(fn ($item) => [
+                'product_id' => $item['product_id'] ?? null,
+                'variation_id' => $item['variation_id'] ?? null,
+                'quantity' => $item['quantity'] ?? null,
+                'name' => $item['name'] ?? null,
+            ])->values()->all(),
+        ]);
+
+        return response()->json([
+            'error' => 'Payment was received, but the order could not be placed because stock or checkout details changed before confirmation. Please do not retry payment. Our team has been alerted for manual review/refund.',
+            'requires_manual_refund' => true,
+        ], 409);
+    }
+
     // ── RAZORPAY: Step 1 — Create Order ───────────────────────────────
     public function createRazorpayOrder(Request $request)
     {
@@ -399,12 +422,17 @@ class OrderController extends Controller
         $total = $totals['total'];
 
         try {
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'razorpay', [
+            $paymentIds = [
                 'razorpay_order_id' => $request->razorpay_order_id,
                 'razorpay_payment_id' => $request->razorpay_payment_id,
-            ]);
+            ];
+
+            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'razorpay', $paymentIds);
         } catch (\RuntimeException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return $this->paidStockFailureResponse($request, 'razorpay', $paymentIds ?? [
+                'razorpay_order_id' => $request->razorpay_order_id,
+                'razorpay_payment_id' => $request->razorpay_payment_id,
+            ], $e);
         }
 
         // Send order success email
@@ -559,12 +587,17 @@ class OrderController extends Controller
             : null;
 
         try {
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'cashfree', [
+            $paymentIds = [
                 'cashfree_order_id' => $orderId,
                 'cashfree_payment_id' => (string)$cfPaymentId,
-            ]);
+            ];
+
+            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'cashfree', $paymentIds);
         } catch (\RuntimeException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return $this->paidStockFailureResponse($request, 'cashfree', $paymentIds ?? [
+                'cashfree_order_id' => $orderId,
+                'cashfree_payment_id' => (string)$cfPaymentId,
+            ], $e);
         }
 
         // Send order success email

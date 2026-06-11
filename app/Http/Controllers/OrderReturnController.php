@@ -7,6 +7,7 @@ use App\Models\OrderReturn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class OrderReturnController extends Controller
 {
@@ -47,8 +48,15 @@ class OrderReturnController extends Controller
             return back()->withErrors(['error' => 'Returns are only allowed for delivered orders within 30 days.']);
         }
 
+        $orderItemIds = $order->orderItems->pluck('id')->all();
+
         $validator = Validator::make($request->all(), [
-            'order_item_id' => 'required|integer',
+            'order_item_id' => [
+                'required',
+                'integer',
+                Rule::exists('order_items', 'id'),
+                Rule::in($orderItemIds),
+            ],
             'reason' => 'required|string|in:defective,wrong_item,not_as_described,damaged,other',
             'description' => 'required|string|max:500',
             'refund_amount' => 'required|numeric|min:0',
@@ -58,13 +66,14 @@ class OrderReturnController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        $selectedItem = $order->orderItems->firstWhere('id', (int) $request->order_item_id);
+        $validated = $validator->validated();
+        $selectedItem = $order->orderItems->firstWhere('id', (int) $validated['order_item_id']);
         if (!$selectedItem) {
             return back()->withErrors(['order_item_id' => 'Please select a valid order item.'])->withInput();
         }
 
         $refundMax = (float) $selectedItem->subtotal;
-        if ((float) $request->refund_amount > $refundMax) {
+        if ((float) $validated['refund_amount'] > $refundMax) {
             return back()
                 ->withErrors(['refund_amount' => 'Refund amount cannot be greater than the selected item subtotal.'])
                 ->withInput();
@@ -82,10 +91,10 @@ class OrderReturnController extends Controller
             'order_id' => $order->id,
             'order_item_id' => $selectedItem->id,
             'customer_id' => Auth::guard('customer')->id(),
-            'reason' => $request->reason,
-            'description' => $request->description,
+            'reason' => $validated['reason'],
+            'description' => $validated['description'],
             'status' => 'pending',
-            'refund_amount' => $request->refund_amount,
+            'refund_amount' => $validated['refund_amount'],
             'requested_at' => now(),
         ]);
 

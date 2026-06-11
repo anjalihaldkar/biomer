@@ -14,9 +14,12 @@ use App\Models\ProductReview;
 use App\Models\BlogReview;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    private const ANALYTICS_EXPORT_ROW_LIMIT = 10000;
+
     public function index()
     {
         $metrics = $this->dashboardMetrics();
@@ -158,6 +161,19 @@ class DashboardController extends Controller
 
     public function exportAnalytics(Request $request)
     {
+        $admin = $request->user('web');
+
+        if (($admin?->role ?? null) !== 'super-admin') {
+            abort(403, 'Only super admins can export analytics reports.');
+        }
+
+        Log::info('Analytics export by admin: ' . $admin->id, [
+            'admin_email' => $admin->email,
+            'ip' => $request->ip(),
+            'sections' => $request->input('sections', []),
+            'row_limit' => self::ANALYTICS_EXPORT_ROW_LIMIT,
+        ]);
+
         $metrics = $this->dashboardMetrics();
         [$salesLabels, $salesData] = $this->monthlySales();
 
@@ -168,69 +184,79 @@ class DashboardController extends Controller
             ->selectRaw("COALESCE(NULLIF(city, ''), 'Unknown') as label, COUNT(*) as total")
             ->groupBy('label')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $usersByAudience = Customer::query()
             ->selectRaw("COALESCE(NULLIF(audience_type, ''), 'Not selected') as label, COUNT(*) as total")
             ->groupBy('label')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $orderStatusBreakdown = Order::query()
             ->selectRaw("COALESCE(NULLIF(status, ''), 'unknown') as label, COUNT(*) as total, COALESCE(SUM(total_amount), 0) as amount")
             ->groupBy('label')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $paymentStatusBreakdown = Order::query()
             ->selectRaw("COALESCE(NULLIF(payment_status, ''), 'unknown') as label, COUNT(*) as total, COALESCE(SUM(total_amount), 0) as amount")
             ->groupBy('label')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $paymentGatewayBreakdown = Order::query()
             ->selectRaw("COALESCE(NULLIF(payment_gateway, ''), 'Not selected') as label, COUNT(*) as total, COALESCE(SUM(total_amount), 0) as amount")
             ->groupBy('label')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $customers = Customer::withCount(['orders', 'wishlists'])
             ->withSum('orders', 'total_amount')
             ->latest()
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
-        $orders = Order::with('customer')->latest()->get();
-        $invoices = Order::with('customer')->where('payment_status', 'paid')->latest()->get();
+        $orders = Order::with('customer')->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
+        $invoices = Order::with('customer')->where('payment_status', 'paid')->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
 
         $topSellingProducts = OrderItem::query()
             ->selectRaw('product_id, product_name, SUM(quantity) as total_quantity, COALESCE(SUM(subtotal), 0) as total_sales')
             ->groupBy('product_id', 'product_name')
             ->orderByDesc('total_quantity')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
         $wishlistProducts = Wishlist::with('product')
             ->select('product_id', DB::raw('COUNT(*) as total'))
             ->groupBy('product_id')
             ->orderByDesc('total')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
-        $wishlistDetails = Wishlist::with(['customer', 'product'])->latest()->get();
+        $wishlistDetails = Wishlist::with(['customer', 'product'])->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
 
         $lowStockProducts = Product::query()
             ->where('manage_stock', true)
             ->where('stock_quantity', '<=', 5)
             ->orderBy('stock_quantity')
+            ->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)
             ->get();
 
-        $returns = OrderReturn::with(['order', 'customer', 'orderItem'])->latest()->get();
+        $returns = OrderReturn::with(['order', 'customer', 'orderItem'])->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
 
-        $productReviews = ProductReview::with(['product', 'customer'])->latest()->get();
-        $blogReviews = BlogReview::with(['blog', 'customer'])->latest()->get();
+        $productReviews = ProductReview::with(['product', 'customer'])->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
+        $blogReviews = BlogReview::with(['blog', 'customer'])->latest()->limit(self::ANALYTICS_EXPORT_ROW_LIMIT)->get();
 
         $sheets = [
             'Summary' => [
                 ['Metric', 'Value'],
                 ['Generated At', now()->format('d M Y h:i A')],
+                ['Detail Sheet Row Limit', self::ANALYTICS_EXPORT_ROW_LIMIT . ' latest rows per sheet'],
                 ['Total Customers', $metrics['totalCustomers']],
                 ['New Customers Last 30 Days', $metrics['newCustomersLast30']],
                 ['Customers With Orders', $customersWithOrders],

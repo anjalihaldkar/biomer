@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\SiteSetting;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -17,11 +19,27 @@ class InvoiceController extends Controller
         return view('dashboard.invoices.index', compact('orders'));
     }
     // ── Admin Download ─────────────────────────────────────────────────
-    public function downloadAdmin($orderNumber)
+    public function downloadAdmin(Request $request, $orderNumber)
     {
+        $admin = $request->user('web');
+
+        if (($admin?->role ?? null) !== 'super-admin') {
+            abort(403, 'Only super admins can download customer invoices.');
+        }
+
         $order = Order::with(['items.product', 'customer'])
             ->where('order_number', $orderNumber)
             ->firstOrFail();
+
+        Log::info('Admin invoice download', [
+            'admin_id' => $admin->id,
+            'admin_email' => $admin->email,
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'customer_id' => $order->customer_id,
+            'ip' => $request->ip(),
+        ]);
+
         $company = $this->invoiceCompany();
 
         $pdf = Pdf::loadView('Invoices.invoice', compact('order', 'company'))
