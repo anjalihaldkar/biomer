@@ -25,6 +25,15 @@ class InvoiceController extends Controller
         $admin = $request->user('web');
 
         if (($admin?->role ?? null) !== 'super-admin') {
+            Log::warning('Blocked admin invoice download attempt', [
+                'admin_id' => $admin?->id,
+                'admin_email' => $admin?->email,
+                'admin_role' => $admin?->role,
+                'order_number' => $orderNumber,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
             abort(403, 'Only super admins can download customer invoices.');
         }
 
@@ -39,6 +48,7 @@ class InvoiceController extends Controller
             'order_number' => $order->order_number,
             'customer_id' => $order->customer_id,
             'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
         ]);
 
         $company = $this->invoiceCompany();

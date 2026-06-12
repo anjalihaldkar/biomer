@@ -571,12 +571,14 @@
     const hamburger = document.getElementById("hamburgerBtn");
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
-    hamburger.addEventListener("click", () => {
-        sidebar.classList.add("open");
-        overlay.classList.add("open");
-    });
-    overlay.addEventListener("click", () => {
-        sidebar.classList.remove("open");
-        overlay.classList.remove("open");
-    });
+    if (hamburger && sidebar && overlay) {
+        hamburger.addEventListener("click", () => {
+            sidebar.classList.add("open");
+            overlay.classList.add("open");
+        });
+        overlay.addEventListener("click", () => {
+            sidebar.classList.remove("open");
+            overlay.classList.remove("open");
+        });
+    }
 </script>

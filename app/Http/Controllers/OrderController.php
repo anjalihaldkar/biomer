@@ -10,12 +10,14 @@ use App\Models\Product;
 use App\Models\ProductVariation;
 use App\Models\PaymentGateway;
 use App\Models\Coupon;
+use App\Models\StockReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Razorpay\Api\Api;
 use Razorpay\Api\Errors\SignatureVerificationError;
 use App\Services\CartPricingService;
@@ -24,6 +26,8 @@ use App\Services\ShiprocketService;
 
 class OrderController extends Controller
 {
+    private const STOCK_RESERVATION_MINUTES = 30;
+
     public function __construct(
         private CartPricingService $pricing,
         private ShiprocketService $shiprocket,
@@ -149,19 +153,24 @@ class OrderController extends Controller
         ]);
     }
 
-    private function createOrderInDB(array $checkoutData, array $cart, string $gateway, array $paymentIds): string
+    private function createOrderInDB(array $checkoutData, array $cart, string $gateway, array $paymentIds, ?string $reservationToken = null): string
     {
         $orderNumber = null;
 
         $this->syncCustomerAddress($checkoutData);
+        $this->releaseExpiredStockReservations();
 
-        DB::transaction(function () use ($checkoutData, $cart, $gateway, $paymentIds, &$orderNumber) {
+        DB::transaction(function () use ($checkoutData, $cart, $gateway, $paymentIds, $reservationToken, &$orderNumber) {
             $customer = $this->customer();
+            $this->assertCurrentCartPrices($cart);
             $coupon = $this->validatedCouponForOrder($cart);
             $totals = $this->calculateCartTotals($cart, $coupon);
 
-            // This locked check is authoritative; the pre-payment stock check is only a fast customer-facing gate.
-            $this->reserveStock($cart);
+            if ($reservationToken) {
+                $this->consumeStockReservation($cart, $reservationToken);
+            } else {
+                $this->reserveStock($cart);
+            }
 
             $orderData = [
                 'customer_id' => $customer->id,
@@ -218,7 +227,7 @@ class OrderController extends Controller
             }
 
             $orderNumber = $order->order_number;
-            session()->forget(['cart', 'checkout_data', 'coupon']);
+            session()->forget(['cart', 'checkout_data', 'coupon', 'stock_reservation_token', 'stock_reservation_expires_at']);
         });
 
         // Push to Shiprocket
@@ -236,6 +245,27 @@ class OrderController extends Controller
 
         return $orderNumber ?? '';
 
+    }
+
+    private function assertCurrentCartPrices(array $cart): void
+    {
+        foreach ($cart as $item) {
+            if (!empty($item['variation_id'])) {
+                $currentPrice = ProductVariation::where('id', $item['variation_id'])
+                    ->where('product_id', $item['product_id'])
+                    ->value('price');
+            } else {
+                $currentPrice = Product::where('id', $item['product_id'])->value('base_price');
+            }
+
+            if ($currentPrice === null) {
+                throw new \RuntimeException("Product '{$item['name']}' is no longer available. Please refresh your cart.");
+            }
+
+            if (abs((float) $item['price'] - (float) $currentPrice) > 0.01) {
+                throw new \RuntimeException("Price for '{$item['name']}' has changed. Please refresh your cart.");
+            }
+        }
     }
 
     private function validatedCouponForOrder(array $cart): ?array
@@ -313,6 +343,210 @@ class OrderController extends Controller
         }
     }
 
+    private function createStockReservation(array $cart): ?string
+    {
+        $this->releaseExpiredStockReservations();
+
+        return DB::transaction(function () use ($cart) {
+            $this->releaseSessionStockReservations();
+            $this->assertCurrentCartPrices($cart);
+
+            $token = (string) Str::uuid();
+            $expiresAt = now()->addMinutes(self::STOCK_RESERVATION_MINUTES);
+            $reservedLines = 0;
+
+            foreach ($cart as $item) {
+                $quantity = (int) $item['quantity'];
+
+                if (!empty($item['variation_id'])) {
+                    $variation = ProductVariation::with('product')
+                        ->where('id', $item['variation_id'])
+                        ->where('product_id', $item['product_id'])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$variation || ($variation->product->manage_stock && $variation->stock_quantity < $quantity)) {
+                        throw new \RuntimeException("Sorry! '{$item['name']}' does not have enough stock.");
+                    }
+
+                    if ($variation->product->manage_stock) {
+                        $variation->decrement('stock_quantity', $quantity);
+                        $this->recordStockReservation($token, $item, $quantity, $expiresAt);
+                        $reservedLines++;
+                    }
+
+                    continue;
+                }
+
+                $product = Product::withCount('variations')
+                    ->where('id', $item['product_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$product || ($product->manage_stock && $product->variations_count === 0 && $product->stock_quantity < $quantity)) {
+                    throw new \RuntimeException("Sorry! '{$item['name']}' does not have enough stock.");
+                }
+
+                if ($product->manage_stock && $product->variations_count === 0) {
+                    $product->decrement('stock_quantity', $quantity);
+                    $this->recordStockReservation($token, $item, $quantity, $expiresAt);
+                    $reservedLines++;
+                }
+            }
+
+            if ($reservedLines === 0) {
+                session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
+
+                return null;
+            }
+
+            session()->put('stock_reservation_token', $token);
+            session()->put('stock_reservation_expires_at', $expiresAt->toIso8601String());
+
+            return $token;
+        });
+    }
+
+    private function recordStockReservation(string $token, array $item, int $quantity, \DateTimeInterface $expiresAt): void
+    {
+        StockReservation::create([
+            'customer_id' => $this->customer()?->id,
+            'session_id' => session()->getId(),
+            'token' => $token,
+            'product_id' => $item['product_id'],
+            'variation_id' => $item['variation_id'] ?? null,
+            'quantity' => $quantity,
+            'expires_at' => $expiresAt,
+        ]);
+    }
+
+    private function consumeStockReservation(array $cart, string $token): void
+    {
+        $reservations = StockReservation::where('token', $token)
+            ->where('status', 'active')
+            ->lockForUpdate()
+            ->get();
+
+        if ($reservations->isEmpty()) {
+            throw new \RuntimeException('Your stock reservation has expired. Please start checkout again.');
+        }
+
+        if ($reservations->contains(fn (StockReservation $reservation) => $reservation->expires_at->isPast())) {
+            throw new \RuntimeException('Your stock reservation has expired. Please start checkout again.');
+        }
+
+        $expected = $this->reservableCartLines($cart);
+        $reserved = $reservations
+            ->mapWithKeys(fn (StockReservation $reservation) => [
+                $this->stockReservationKey($reservation->product_id, $reservation->variation_id) => $reservation->quantity,
+            ])
+            ->all();
+
+        ksort($expected);
+        ksort($reserved);
+
+        if ($expected !== $reserved) {
+            throw new \RuntimeException('Your cart changed after stock was reserved. Please start checkout again.');
+        }
+
+        StockReservation::whereIn('id', $reservations->pluck('id'))
+            ->update(['status' => 'consumed']);
+    }
+
+    private function reservableCartLines(array $cart): array
+    {
+        $lines = [];
+
+        foreach ($cart as $item) {
+            if (!empty($item['variation_id'])) {
+                $variation = ProductVariation::with('product')
+                    ->where('id', $item['variation_id'])
+                    ->where('product_id', $item['product_id'])
+                    ->first();
+
+                if ($variation && $variation->product->manage_stock) {
+                    $key = $this->stockReservationKey((int) $item['product_id'], (int) $item['variation_id']);
+                    $lines[$key] = ($lines[$key] ?? 0) + (int) $item['quantity'];
+                }
+
+                continue;
+            }
+
+            $product = Product::withCount('variations')->find($item['product_id']);
+            if ($product && $product->manage_stock && $product->variations_count === 0) {
+                $key = $this->stockReservationKey((int) $item['product_id'], null);
+                $lines[$key] = ($lines[$key] ?? 0) + (int) $item['quantity'];
+            }
+        }
+
+        return $lines;
+    }
+
+    private function cartRequiresStockReservation(array $cart): bool
+    {
+        return !empty($this->reservableCartLines($cart));
+    }
+
+    private function stockReservationKey(int $productId, ?int $variationId): string
+    {
+        return $productId . ':' . ($variationId ?: 'product');
+    }
+
+    private function releaseSessionStockReservations(): void
+    {
+        $tokens = StockReservation::where('status', 'active')
+            ->where(function ($query) {
+                $query->where('session_id', session()->getId());
+
+                if ($this->customer()) {
+                    $query->orWhere('customer_id', $this->customer()->id);
+                }
+            })
+            ->distinct()
+            ->pluck('token');
+
+        foreach ($tokens as $token) {
+            $this->releaseStockReservation($token);
+        }
+    }
+
+    private function releaseExpiredStockReservations(): int
+    {
+        $tokens = StockReservation::where('status', 'active')
+            ->where('expires_at', '<=', now())
+            ->distinct()
+            ->pluck('token');
+
+        foreach ($tokens as $token) {
+            $this->releaseStockReservation($token);
+        }
+
+        return $tokens->count();
+    }
+
+    private function releaseStockReservation(string $token, string $status = 'released'): void
+    {
+        DB::transaction(function () use ($token, $status) {
+            $reservations = StockReservation::where('token', $token)
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($reservations as $reservation) {
+                if ($reservation->variation_id) {
+                    ProductVariation::where('id', $reservation->variation_id)
+                        ->increment('stock_quantity', $reservation->quantity);
+                } else {
+                    Product::where('id', $reservation->product_id)
+                        ->increment('stock_quantity', $reservation->quantity);
+                }
+            }
+
+            StockReservation::whereIn('id', $reservations->pluck('id'))
+                ->update(['status' => $status]);
+        });
+    }
+
     private function paidStockFailureResponse(Request $request, string $gateway, array $paymentIds, \RuntimeException $e)
     {
         Log::critical('Paid order failed during post-payment order creation. Manual refund review required.', [
@@ -328,6 +562,11 @@ class OrderController extends Controller
                 'name' => $item['name'] ?? null,
             ])->values()->all(),
         ]);
+
+        if ($reservationToken = session()->get('stock_reservation_token')) {
+            $this->releaseStockReservation($reservationToken);
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
+        }
 
         return response()->json([
             'error' => 'Payment was received, but the order could not be placed because stock or checkout details changed before confirmation. Please do not retry payment. Our team has been alerted for manual review/refund.',
@@ -353,20 +592,32 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
-        $stockError = $this->checkStock($cart);
-        if ($stockError)
-            return response()->json($stockError, 422);
-
         $coupon = session()->get('coupon');
         $totals = $this->calculateCartTotals($cart, $coupon);
         $total = $totals['total'];
 
+        try {
+            $reservationToken = $this->createStockReservation($cart);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
         $api = new Api($gateway->api_key, $gateway->secret_key);
-        $razorpayOrder = $api->order->create([
-            'receipt' => 'BB-' . strtoupper(uniqid()),
-            'amount' => (int)round($total * 100),
-            'currency' => 'INR',
-        ]);
+        try {
+            $razorpayOrder = $api->order->create([
+                'receipt' => 'BB-' . strtoupper(uniqid()),
+                'amount' => (int)round($total * 100),
+                'currency' => 'INR',
+            ]);
+        } catch (\Throwable $e) {
+            if ($reservationToken) {
+                $this->releaseStockReservation($reservationToken);
+            }
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
+            Log::error('Razorpay create order failed: ' . $e->getMessage());
+
+            return response()->json(['error' => 'Failed to create Razorpay order. Please try again.'], 500);
+        }
 
         $this->storeCheckoutSession($request);
         $customer = $this->customer();
@@ -377,6 +628,7 @@ class OrderController extends Controller
             'amount' => (int)round($total * 100),
             'currency' => 'INR',
             'key_id' => $gateway->api_key,
+            'stock_reservation_expires_at' => session()->get('stock_reservation_expires_at'),
             'name' => $customer->name,
             'email' => $customer->email,
             'phone' => $customer->phone ?? $request->phone,
@@ -417,6 +669,10 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
+        $reservationToken = session()->get('stock_reservation_token');
+        if (!$reservationToken && $this->cartRequiresStockReservation($cart))
+            return response()->json(['error' => 'Your stock reservation has expired. Please start checkout again.'], 422);
+
         $coupon = session()->get('coupon');
         $totals = $this->calculateCartTotals($cart, $coupon);
         $total = $totals['total'];
@@ -427,7 +683,7 @@ class OrderController extends Controller
                 'razorpay_payment_id' => $request->razorpay_payment_id,
             ];
 
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'razorpay', $paymentIds);
+            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'razorpay', $paymentIds, $reservationToken);
         } catch (\RuntimeException $e) {
             return $this->paidStockFailureResponse($request, 'razorpay', $paymentIds ?? [
                 'razorpay_order_id' => $request->razorpay_order_id,
@@ -464,15 +720,17 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
-        $stockError = $this->checkStock($cart);
-        if ($stockError)
-            return response()->json($stockError, 422);
-
         $coupon = session()->get('coupon');
         $totals = $this->calculateCartTotals($cart, $coupon);
         $total = $totals['total'];
         $customer = $this->customer();
         $orderId = 'BB-' . strtoupper(uniqid());
+
+        try {
+            $reservationToken = $this->createStockReservation($cart);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
 
         $returnUrl = $request->getSchemeAndHttpHost() . route('order.cashfree.verify', [], false) . '?order_id={order_id}';
 
@@ -494,6 +752,10 @@ class OrderController extends Controller
         ]);
 
         if (!$response->successful()) {
+            if ($reservationToken) {
+                $this->releaseStockReservation($reservationToken);
+            }
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
             Log::error('Cashfree create order failed: ' . $response->body());
             $message = 'Failed to create Cashfree order. Please check Cashfree credentials and environment.';
             if ($response->json('message')) {
@@ -507,6 +769,10 @@ class OrderController extends Controller
         $data = $response->json();
 
         if (empty($data['payment_session_id']) || !is_string($data['payment_session_id'])) {
+            if ($reservationToken) {
+                $this->releaseStockReservation($reservationToken);
+            }
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
             Log::error('Cashfree create order missing payment_session_id: ' . json_encode($data));
             return response()->json(['error' => 'Cashfree did not return a valid payment_session_id. Please check Cashfree configuration and logs.'], 500);
         }
@@ -520,6 +786,7 @@ class OrderController extends Controller
             'success' => true,
             'payment_session_id' => $data['payment_session_id'],
             'cashfree_order_id' => $data['order_id'],
+            'stock_reservation_expires_at' => session()->get('stock_reservation_expires_at'),
         ]);
     }
 
@@ -574,6 +841,10 @@ class OrderController extends Controller
         if (empty($cart))
             return response()->json(['error' => 'Your cart is empty.'], 422);
 
+        $reservationToken = session()->get('stock_reservation_token');
+        if (!$reservationToken && $this->cartRequiresStockReservation($cart))
+            return response()->json(['error' => 'Your stock reservation has expired. Please start checkout again.'], 422);
+
         $coupon = session()->get('coupon');
         $totals = $this->calculateCartTotals($cart, $coupon);
         $total = $totals['total'];
@@ -592,7 +863,7 @@ class OrderController extends Controller
                 'cashfree_payment_id' => (string)$cfPaymentId,
             ];
 
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'cashfree', $paymentIds);
+            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'cashfree', $paymentIds, $reservationToken);
         } catch (\RuntimeException $e) {
             return $this->paidStockFailureResponse($request, 'cashfree', $paymentIds ?? [
                 'cashfree_order_id' => $orderId,
@@ -739,8 +1010,12 @@ class OrderController extends Controller
                 Log::error('Failed to send order failed email: ' . $e->getMessage());
             }
 
+            if ($reservationToken = session()->get('stock_reservation_token')) {
+                $this->releaseStockReservation($reservationToken);
+            }
+
             // Clear cart and checkout data
-            session()->forget(['cart', 'checkout_data', 'coupon']);
+            session()->forget(['cart', 'checkout_data', 'coupon', 'stock_reservation_token', 'stock_reservation_expires_at']);
         }
 
         return response()->json(['error' => 'Payment was cancelled or failed. No order has been placed.'], 400);

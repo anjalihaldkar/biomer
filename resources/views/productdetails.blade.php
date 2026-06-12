@@ -215,7 +215,7 @@
                   {{-- ── Key Features ── --}}
                   @if($product->description)
                   <h5 class="avan__features-heading mt-3">Description</h5>
-                  <div class="avan__product-desc">{!! $product->description !!}</div>
+                  <div class="avan__product-desc">{!! \App\Services\HtmlSanitizer::clean($product->description) !!}</div>
                   @endif
 
                   {{-- ── CTA Buttons ── --}}

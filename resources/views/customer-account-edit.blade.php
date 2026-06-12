@@ -1,5 +1,5 @@
 @extends('layout.frontlayout')
-@section('title', 'Edit Account – Bharat Biomer')
+@section('title', 'Edit Account - Bharat Biomer')
 
 @section('content')
 <div class="container my-4">
@@ -76,9 +76,48 @@
                             @enderror
                         </div>
 
-                        <div class="cae__alert">
-                            <span class="cae__alert-icon">ℹ️</span>
-                            <span class="cae__alert-text">To change your password, please use the password reset feature from the login page.</span>
+                        <hr class="my-4">
+
+                        <div class="cae__header px-0 pt-0">
+                            <div class="cae__title">Change Password</div>
+                            <div class="cae__subtitle">Leave these fields blank to keep your current password</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="current_password" class="form-label">Current Password</label>
+                            <input type="password"
+                                   class="form-control @error('current_password') is-invalid @enderror"
+                                   id="current_password"
+                                   name="current_password"
+                                   autocomplete="current-password">
+                            @error('current_password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password"
+                                   class="form-control @error('new_password') is-invalid @enderror"
+                                   id="new_password"
+                                   name="new_password"
+                                   autocomplete="new-password">
+                            @error('new_password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="form-text text-muted cae__help-text">Use at least 8 characters with one letter and one number.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new_password_confirmation" class="form-label">Confirm New Password</label>
+                            <input type="password"
+                                   class="form-control @error('new_password_confirmation') is-invalid @enderror"
+                                   id="new_password_confirmation"
+                                   name="new_password_confirmation"
+                                   autocomplete="new-password">
+                            @error('new_password_confirmation')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         <div class="cae__actions">

@@ -95,12 +95,12 @@ Route::post('/logout', [CustomerAuthController::class , 'logout'])->name('custom
 
 // Cart — session based, no login needed
 Route::get('/cart', [CartController::class , 'index'])->name('cart.index');
-Route::post('/cart/add', [CartController::class , 'add'])->name('cart.add');
-Route::post('/cart/update', [CartController::class , 'update'])->name('cart.update');
-Route::post('/cart/remove', [CartController::class , 'remove'])->name('cart.remove');
-Route::post('/cart/clear', [CartController::class , 'clear'])->name('cart.clear');
-Route::post('/cart/coupon/apply', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
-Route::post('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
+Route::post('/cart/add',    [CartController::class , 'add'])->name('cart.add')->middleware('throttle:30,1');
+Route::post('/cart/update', [CartController::class , 'update'])->name('cart.update')->middleware('throttle:30,1');
+Route::post('/cart/remove', [CartController::class , 'remove'])->name('cart.remove')->middleware('throttle:30,1');
+Route::post('/cart/clear',  [CartController::class , 'clear'])->name('cart.clear')->middleware('throttle:10,1');
+Route::post('/cart/coupon/apply',  [CartController::class, 'applyCoupon'])->name('cart.coupon.apply')->middleware('throttle:10,1');
+Route::post('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove')->middleware('throttle:20,1');
 
 // Customer checkout — customer login required
 Route::middleware('customer.auth')->group(function () {
@@ -303,7 +303,7 @@ Route::middleware(['admin.auth'])->group(function () {
         Route::get(
             '/dashboard/orders/{orderNumber}/invoice',
             [InvoiceController::class , 'downloadAdmin']
-        )->middleware('throttle:10,1')->name('dashboard.orders.invoice');
+        )->middleware(['signed', 'throttle:5,1'])->name('dashboard.orders.invoice');
     
         // ── Dashboard ─────────────────────────────────────────────────────
         Route::prefix('dashboard')->group(function () {

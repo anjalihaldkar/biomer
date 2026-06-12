@@ -114,7 +114,7 @@
 
                                 @if($canDownloadInvoices)
                                     {{-- Download Invoice --}}
-                                    <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}"
+                                    <a href="{{ URL::temporarySignedRoute('dashboard.orders.invoice', now()->addMinutes(10), $order->order_number) }}"
                                        class="btn btn-sm btn-outline-success"
                                        title="Download Invoice" target="_blank">
                                         Download

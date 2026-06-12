@@ -90,7 +90,7 @@
             </div>
             <div class="d-flex flex-wrap gap-2">
                 @if($canDownloadInvoices)
-                    <a href="{{ route('dashboard.orders.invoice', $order->order_number) }}" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
+                    <a href="{{ URL::temporarySignedRoute('dashboard.orders.invoice', now()->addMinutes(10), $order->order_number) }}" class="btn btn-sm btn-outline-success" target="_blank">Download</a>
                 @endif
                 <a href="{{ route('dashboard.orders.show', $order->order_number) }}" class="btn btn-sm btn-outline-primary">View Order</a>
                 <button type="button" class="btn btn-sm btn-primary" onclick="printInvoice()">Print</button>

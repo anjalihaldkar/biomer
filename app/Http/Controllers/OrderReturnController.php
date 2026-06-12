@@ -72,10 +72,14 @@ class OrderReturnController extends Controller
             return back()->withErrors(['order_item_id' => 'Please select a valid order item.'])->withInput();
         }
 
-        $refundMax = (float) $selectedItem->subtotal;
+        $refundMax = min(
+            (float) $selectedItem->subtotal,
+            (float) $order->net_amount
+        );
+
         if ((float) $validated['refund_amount'] > $refundMax) {
             return back()
-                ->withErrors(['refund_amount' => 'Refund amount cannot be greater than the selected item subtotal.'])
+                ->withErrors(['refund_amount' => 'Refund amount cannot be greater than the refundable paid amount for this item.'])
                 ->withInput();
         }
 

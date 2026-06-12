@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\CustomerAuth;
 use App\Http\Middleware\AdminAuth;
+use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.auth'    => AdminAuth::class,
             'customer.auth' => CustomerAuth::class,
         ]);
+
+        // Add security headers to every response
+        $middleware->append(SecurityHeaders::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {

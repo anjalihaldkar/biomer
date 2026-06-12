@@ -372,7 +372,13 @@
                     alt="{{ $siteSettings?->site_name ?? 'Bharat Biomer' }}" /></a>
             <nav class="links">
                 @foreach($headerLinks as $link)
-                    <a href="{{ $link->href }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
+                    @php
+                        $linkLabel = Str::lower(trim($link->label));
+                        $linkHref = in_array($linkLabel, ['product', 'products', 'shop'], true)
+                            ? route('products.index')
+                            : $link->href;
+                    @endphp
+                    <a href="{{ $linkHref }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
                         @if($link->icon)
                             <iconify-icon icon="{{ $link->icon }}" class="icon"></iconify-icon>
                         @endif
@@ -410,7 +416,13 @@
         </div>
         <div class="mobile-panel" id="mobilePanel">
             @foreach($headerLinks as $link)
-                <a href="{{ $link->href }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
+                @php
+                    $linkLabel = Str::lower(trim($link->label));
+                    $linkHref = in_array($linkLabel, ['product', 'products', 'shop'], true)
+                        ? route('products.index')
+                        : $link->href;
+                @endphp
+                <a href="{{ $linkHref }}" target="{{ $link->safe_target }}" @if($link->safe_target === '_blank') rel="noopener noreferrer" @endif>
                     @if($link->icon)
                         <iconify-icon icon="{{ $link->icon }}" class="icon"></iconify-icon>
                     @endif

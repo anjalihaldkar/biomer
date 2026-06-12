@@ -11,16 +11,18 @@ use App\Models\ProductAttribute;
 use App\Models\ProductImage;
 use App\Models\ProductVariation;
 use App\Models\Tag;
+use App\Support\SafeImageUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
-    private const SAFE_IMAGE_RULE = 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:10240';
+    private const SAFE_IMAGE_RULE = SafeImageUpload::VALIDATION_RULE;
 
     // ── Index ──────────────────────────────────────────────────────────────
     public function index()
@@ -97,8 +99,10 @@ class ProductController extends Controller
                 // 1. Featured image
                 $featuredImagePath = null;
                 if ($request->hasFile('featured_image')) {
-                    $featuredImagePath = $request->file('featured_image')
-                        ->store('products/featured', 'public');
+                    $featuredImagePath = SafeImageUpload::storePublic(
+                        $request->file('featured_image'),
+                        'products/featured'
+                    );
                 }
 
                 // 2. Create product
@@ -129,7 +133,7 @@ class ProductController extends Controller
                 if ($request->hasFile('gallery')) {
                     $order = 0;
                     foreach ($request->file('gallery') as $file) {
-                        $path = $file->store('products/gallery', 'public');
+                        $path = SafeImageUpload::storePublic($file, 'products/gallery');
                         ProductImage::create([
                             'product_id'  => $product->id,
                             'image_path'  => $path,
@@ -150,8 +154,10 @@ class ProductController extends Controller
                             isset($varFiles[$index]['image']) &&
                             $varFiles[$index]['image']->isValid()
                         ) {
-                            $varImagePath = $varFiles[$index]['image']
-                                ->store('products/variations', 'public');
+                            $varImagePath = SafeImageUpload::storePublic(
+                                $varFiles[$index]['image'],
+                                'products/variations'
+                            );
                         }
 
                         ProductVariation::create([
@@ -195,6 +201,8 @@ class ProductController extends Controller
                 }
             });
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Product creation failed', [
                 'message'   => $e->getMessage(),
@@ -298,8 +306,10 @@ class ProductController extends Controller
                     if ($product->featured_image) {
                         Storage::disk('public')->delete($product->featured_image);
                     }
-                    $featuredImagePath = $request->file('featured_image')
-                        ->store('products/featured', 'public');
+                    $featuredImagePath = SafeImageUpload::storePublic(
+                        $request->file('featured_image'),
+                        'products/featured'
+                    );
                 }
 
                 // 2. Update product
@@ -330,7 +340,7 @@ class ProductController extends Controller
                 if ($request->hasFile('gallery')) {
                     $lastOrder = $product->images()->max('sort_order') ?? -1;
                     foreach ($request->file('gallery') as $file) {
-                        $path = $file->store('products/gallery', 'public');
+                        $path = SafeImageUpload::storePublic($file, 'products/gallery');
                         ProductImage::create([
                             'product_id'  => $product->id,
                             'image_path'  => $path,
@@ -350,8 +360,10 @@ class ProductController extends Controller
                             isset($varFiles[$index]['image']) &&
                             $varFiles[$index]['image']->isValid()
                         ) {
-                            $varImagePath = $varFiles[$index]['image']
-                                ->store('products/variations', 'public');
+                            $varImagePath = SafeImageUpload::storePublic(
+                                $varFiles[$index]['image'],
+                                'products/variations'
+                            );
                         }
 
                         if (!empty($varData['id'])) {
@@ -423,6 +435,8 @@ class ProductController extends Controller
                 }
             });
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Product update failed', [
                 'message'   => $e->getMessage(),

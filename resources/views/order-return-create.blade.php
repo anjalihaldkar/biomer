@@ -29,7 +29,8 @@
                 @php
                     $selectedOrderItemId = old('order_item_id', optional($order->items->first())->id);
                     $selectedOrderItem = $order->items->firstWhere('id', (int) $selectedOrderItemId) ?? $order->items->first();
-                    $selectedRefundMax = (float) ($selectedOrderItem?->subtotal ?? 0);
+                    $orderRefundMax = (float) ($order->net_amount ?? $order->total_amount ?? 0);
+                    $selectedRefundMax = min((float) ($selectedOrderItem?->subtotal ?? 0), $orderRefundMax);
                 @endphp
 
                 <div class="orc__body">
@@ -42,7 +43,7 @@
                             @foreach($order->items as $item)
                             <label class="orc__item">
                                 <input type="radio" name="order_item_id" value="{{ $item->id }}"
-                                       data-refund-amount="{{ number_format((float) $item->subtotal, 2, '.', '') }}"
+                                       data-refund-amount="{{ number_format(min((float) $item->subtotal, $orderRefundMax), 2, '.', '') }}"
                                        {{ old('order_item_id') == $item->id || ($loop->first && !old('order_item_id')) ? 'checked' : '' }}>
                                 @if($item->product?->featured_image)
                                     <img src="{{ Storage::url($item->product->featured_image) }}" alt="{{ $item->product_name }}" class="orc__item-img">

@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Never execute PHP files from public storage, even if uploaded content
+    # reaches the storage symlink because of a future validation or server issue.
+    RewriteRule ^storage/.*\.php[0-9s]?$ - [F,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
