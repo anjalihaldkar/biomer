@@ -30,7 +30,7 @@
               <label class="auth__label">Full Name <span class="auth__required">*</span></label>
               <input type="text" name="name"
                      class="auth__input {{ $errors->has('name') ? 'auth__input--error' : '' }}"
-                     value="{{ old('name') }}" placeholder="e.g. Ramesh Patel" required>
+                     value="{{ old('name') }}" placeholder="e.g. Ramesh Patel" minlength="2" maxlength="255" required>
               @error('name')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 
@@ -38,7 +38,7 @@
               <label class="auth__label">Email Address <span class="auth__required">*</span></label>
               <input type="email" name="email"
                      class="auth__input {{ $errors->has('email') ? 'auth__input--error' : '' }}"
-                     value="{{ old('email') }}" placeholder="your@email.com" required>
+                     value="{{ old('email') }}" placeholder="your@email.com" maxlength="255" required>
               @error('email')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 
@@ -46,7 +46,7 @@
               <label class="auth__label">Phone Number</label>
               <input type="tel" name="phone"
                      class="auth__input {{ $errors->has('phone') ? 'auth__input--error' : '' }}"
-                     value="{{ old('phone') }}" placeholder="e.g. 9876543210">
+                     value="{{ old('phone') }}" placeholder="e.g. 9876543210" pattern="[0-9+\-\s()]{7,20}" maxlength="20">
               @error('phone')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 

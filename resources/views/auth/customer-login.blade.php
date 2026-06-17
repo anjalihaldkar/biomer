@@ -37,7 +37,7 @@
               <label class="auth__label">Email Address <span class="auth__required">*</span></label>
               <input type="email" name="email"
                      class="auth__input {{ $errors->has('email') ? 'auth__input--error' : '' }}"
-                     value="{{ old('email') }}" placeholder="your@email.com" required>
+                     value="{{ old('email') }}" placeholder="your@email.com" maxlength="255" required>
               @error('email')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 
@@ -45,7 +45,7 @@
               <label class="auth__label">Password <span class="auth__required">*</span></label>
               <input type="password" name="password"
                      class="auth__input {{ $errors->has('password') ? 'auth__input--error' : '' }}"
-                     placeholder="Enter your password" required>
+                     placeholder="Enter your password" minlength="6" required>
               @error('password')<p class="auth__error">{{ $message }}</p>@enderror
             </div>
 

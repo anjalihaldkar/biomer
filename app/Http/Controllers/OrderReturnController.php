@@ -38,6 +38,10 @@ class OrderReturnController extends Controller
 
     public function store(Request $request, $orderNumber)
     {
+        $request->merge([
+            'description' => trim((string) $request->input('description', '')),
+        ]);
+
         $order = Order::where('order_number', $orderNumber)
             ->where('customer_id', Auth::guard('customer')->id())
             ->with(['items'])
@@ -58,8 +62,10 @@ class OrderReturnController extends Controller
                 Rule::in($orderItemIds),
             ],
             'reason' => 'required|string|in:defective,wrong_item,not_as_described,damaged,other',
-            'description' => 'required|string|max:500',
+            'description' => 'required|string|min:10|max:500',
             'refund_amount' => 'required|numeric|min:0',
+        ], [
+            'description.min' => 'Please describe the issue in at least 10 characters.',
         ]);
 
         if ($validator->fails()) {

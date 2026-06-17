@@ -56,7 +56,7 @@
                             <td>{{ str_pad($products->firstItem() + $i, 2, '0', STR_PAD_LEFT) }}</td>
                             <td>
                                 @if($product->featured_image)
-                                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}" alt="{{ $product->name }}" class="radius-8 border" style="width:48px;height:48px;object-fit:cover;">
+                                    <img src="{{ Storage::url($product->featured_image) }}" alt="{{ $product->name }}" class="radius-8 border" style="width:48px;height:48px;object-fit:cover;">
                                 @else
                                     <div class="radius-8 bg-neutral-200 border" style="width:48px;height:48px;"></div>
                                 @endif

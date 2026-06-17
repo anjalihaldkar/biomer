@@ -51,7 +51,7 @@
     @stack('meta')
 
     {{-- Bootstrap 5 CSS --}}
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="{{ asset('assets/css/lib/bootstrap.min.css') }}" rel="stylesheet" />
 
     {{-- Google Fonts --}}
     <link
@@ -574,7 +574,7 @@
     <script src="{{ asset('assets/js/lib/iconify-icon.min.js') }}"></script>
 
     {{-- Bootstrap 5 JS --}}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('assets/js/lib/bootstrap.bundle.min.js') }}"></script>
 
     {{-- GSAP for page motion --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>

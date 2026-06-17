@@ -67,6 +67,13 @@ Route::post('/audience-preference', [AudiencePreferenceController::class, 'store
 //  ADMIN AUTH ROUTES — public (no login required)
 // ══════════════════════════════════════════════════════════════════════
 
+Route::post('/webhooks/razorpay', [OrderController::class, 'razorpayWebhook'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.razorpay');
+Route::post('/webhooks/cashfree', [OrderController::class, 'cashfreeWebhook'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.cashfree');
+
 Route::get('/admin', fn() => redirect()->route('signin'));
 
 Route::prefix('authentication')->controller(AuthenticationController::class)->group(function () {

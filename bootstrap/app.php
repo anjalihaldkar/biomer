@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add security headers to every response
         $middleware->append(SecurityHeaders::class);
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/razorpay',
+            'webhooks/cashfree',
+        ]);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {

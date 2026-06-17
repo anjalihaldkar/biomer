@@ -179,6 +179,7 @@
                         <p>Increases yield and improves quality.</p>
                     </div>
                 </div>
+                <div class="cycle-dots" data-cycle-dots aria-label="Crop cycle slider pagination"></div>
             </div>
         </section>
 

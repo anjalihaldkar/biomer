@@ -32,11 +32,21 @@
       </div>
 
       <div class="row g-4 align-items-start">
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-3 shop__filters-col">
+          <div class="shop__filters-backdrop" data-mobile-filter-close></div>
           <div class="shop__filters-card shop__filters-card--sidebar">
             <div class="shop__filters-header">
-              <h4 class="shop__filters-title">Filters</h4>
+              <div>
+                <span class="shop__filters-kicker">Filters</span>
+                <h4 class="shop__filters-title">Refine products</h4>
+              </div>
               <a href="{{ route('products.index') }}" class="shop__filters-reset">Reset</a>
+              <button type="button"
+                      class="shop__filters-close"
+                      data-mobile-filter-close
+                      aria-label="Close filters">
+                <i class="ri-close-line"></i>
+              </button>
             </div>
             <form method="GET" action="{{ route('products.index') }}" id="filterForm" data-product-filter-form>
 
@@ -90,7 +100,7 @@
                   </div>
                 </div>
 
-                <div class="shop__filter-group">
+                <div class="shop__filter-group shop__filter-group--sort">
                   <label class="shop__filter-label">Sort By</label>
                   <select name="sort" class="shop__filter-select">
                     <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Latest</option>
@@ -112,6 +122,25 @@
         </div>
 
         <div class="col-12 col-lg-9">
+          <div class="shop__mobile-toolbar">
+            <div class="shop__mobile-count">
+              <strong>{{ $products->total() }} {{ Str::plural('product', $products->total()) }} found</strong>
+              <span>Showing {{ $products->firstItem() ?? 0 }}-{{ $products->lastItem() ?? 0 }} of {{ $products->total() }}</span>
+            </div>
+            <div class="shop__mobile-controls">
+              <select class="shop__mobile-sort" data-mobile-sort aria-label="Sort products">
+                <option value="latest" {{ request('sort', 'latest') == 'latest' ? 'selected' : '' }}>Latest</option>
+                <option value="name" {{ request('sort') == 'name' ? 'selected' : '' }}>Name A-Z</option>
+                <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Price low to high</option>
+                <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Price high to low</option>
+              </select>
+              <button type="button" class="shop__mobile-filter-btn" data-mobile-filter-open>
+                <i class="ri-menu-3-line"></i>
+                <span>Filters</span>
+              </button>
+            </div>
+          </div>
+
           {{-- Results Info --}}
           @if(request()->hasAny(['search', 'category', 'brand', 'min_price', 'max_price']))
             <div class="row mb-3">
@@ -146,13 +175,17 @@
           <div class="shop__card">
 
             <div class="shop__img-wrap">
-              @if($product->featured_image)
-                <img src="{{ asset('storage/' . ltrim($product->featured_image, '/')) }}"
-                     alt="{{ $product->name }}" class="shop__img">
-              @else
-                <img src="{{ asset('assets/images/product-bottle.svg') }}"
-                     alt="{{ $product->name }}" class="shop__img">
-              @endif
+              <a href="{{ route('products.show', $product->slug ?? $product->id) }}"
+                 class="shop__image-link"
+                 aria-label="View {{ $product->name }}">
+                @if($product->featured_image)
+                  <img src="{{ Storage::url($product->featured_image) }}"
+                       alt="{{ $product->name }}" class="shop__img">
+                @else
+                  <img src="{{ asset('assets/images/product-bottle.svg') }}"
+                       alt="{{ $product->name }}" class="shop__img">
+                @endif
+              </a>
 
               {{-- Status Badge --}}
               @if($product->status === 'active')

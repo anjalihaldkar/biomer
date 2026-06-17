@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariation;
 use App\Models\StockReservation;
 use App\Models\User;
+use App\Models\Order;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -66,3 +67,47 @@ Artisan::command('stock-reservations:release-expired', function () {
 })->purpose('Release expired checkout stock reservations.');
 
 Schedule::command('stock-reservations:release-expired')->everyFiveMinutes();
+
+Artisan::command('orders:cancel-expired-pending-payments', function () {
+    $orders = Order::with('items')
+        ->whereIn('payment_gateway', ['razorpay', 'cashfree'])
+        ->where('payment_status', 'pending')
+        ->where('created_at', '<=', now()->subMinutes(45))
+        ->get();
+
+    foreach ($orders as $order) {
+        DB::transaction(function () use ($order) {
+            $lockedOrder = Order::with('items')->whereKey($order->id)->lockForUpdate()->first();
+
+            if (!$lockedOrder || $lockedOrder->payment_status !== 'pending') {
+                return;
+            }
+
+            foreach ($lockedOrder->items as $item) {
+                if ($item->variation_id) {
+                    $variation = ProductVariation::with('product')->find($item->variation_id);
+                    if ($variation && $variation->product?->manage_stock) {
+                        $variation->increment('stock_quantity', $item->quantity);
+                    }
+                    continue;
+                }
+
+                $product = Product::withCount('variations')->find($item->product_id);
+                if ($product && $product->manage_stock && $product->variations_count === 0) {
+                    $product->increment('stock_quantity', $item->quantity);
+                }
+            }
+
+            $lockedOrder->update([
+                'status' => 'cancelled',
+                'payment_status' => 'failed',
+            ]);
+        });
+    }
+
+    $this->info("Cancelled {$orders->count()} expired pending payment order(s).");
+
+    return 0;
+})->purpose('Cancel stale pending Razorpay/Cashfree orders and restore held stock.');
+
+Schedule::command('orders:cancel-expired-pending-payments')->everyTenMinutes();

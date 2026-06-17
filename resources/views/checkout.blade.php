@@ -65,7 +65,7 @@
                             <input type="text" name="name"
                                    class="chk__input @error('name') is-invalid @enderror"
                                    value="{{ old('name', $customer->name) }}"
-                                   placeholder="Your full name" required>
+                                   placeholder="Your full name" minlength="2" maxlength="255" required>
                             @error('name')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                         <div class="col-12 col-sm-6">
@@ -73,7 +73,7 @@
                             <input type="tel" name="phone"
                                    class="chk__input @error('phone') is-invalid @enderror"
                                    value="{{ old('phone', $customer->phone) }}"
-                                   placeholder="+91 XXXXX XXXXX" required>
+                                   placeholder="+91 XXXXX XXXXX" pattern="[0-9+\-\s()]{7,20}" maxlength="20" required>
                             @error('phone')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                         <div class="col-12">
@@ -81,7 +81,7 @@
                             <input type="email" name="email"
                                    class="chk__input @error('email') is-invalid @enderror"
                                    value="{{ old('email', $customer->email) }}"
-                                   placeholder="you@example.com" required>
+                                   placeholder="you@example.com" maxlength="255" required>
                             @error('email')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                     </div>
@@ -99,14 +99,14 @@
                             <textarea name="address"
                                       class="chk__textarea @error('address') is-invalid @enderror"
                                       placeholder="House / Flat no., Street, Village, Landmark, Area..."
-                                      required>{{ old('address', $customer->address) }}</textarea>
+                                      minlength="10" maxlength="500" required>{{ old('address', $customer->address) }}</textarea>
                             @error('address')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                         <div class="col-12 col-sm-6">
                             <label class="chk__label">City *</label>
                             <input type="text" name="city"
                                    class="chk__input @error('city') is-invalid @enderror"
-                                   value="{{ old('city', $customer->city) }}" placeholder="City / Town" required>
+                                   value="{{ old('city', $customer->city) }}" placeholder="City / Town" minlength="2" maxlength="100" required>
                             @error('city')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                         <div class="col-12 col-sm-6">
@@ -137,7 +137,7 @@
                             <input type="text" name="pincode"
                                    class="chk__input @error('pincode') is-invalid @enderror"
                                    value="{{ old('pincode', $customer->pincode) }}"
-                                   placeholder="6-digit PIN" maxlength="6" required>
+                                   placeholder="6-digit PIN" pattern="[1-9][0-9]{5}" maxlength="6" required>
                             @error('pincode')<span class="chk__error">{{ $message }}</span>@enderror
                         </div>
                         <div class="col-12 col-sm-6">
@@ -155,7 +155,7 @@
                         Additional Notes
                         <small class="chk__optional">(optional)</small>
                     </div>
-                    <textarea name="notes" class="chk__textarea"
+                    <textarea name="notes" class="chk__textarea" maxlength="500"
                               placeholder="Crop type, field conditions, preferred delivery time...">{{ old('notes') }}</textarea>
                     <div class="chk__note">
                         💡 Mention your crop and soil type — our agronomist will include personalised tips with your order.

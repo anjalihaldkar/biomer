@@ -1060,7 +1060,7 @@
                         <div class="card-body">
                             @if (isset($product) && $product->featured_image)
                                 <div class="featured-img-wrap" id="featuredExistingWrap">
-                                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
+                                    <img src="{{ Storage::url($product->featured_image) }}"
                                         class="img-fluid rounded"
                                         style="max-height:180px;object-fit:cover;width:100%;">
                                     <button type="button" class="del-img"
@@ -1087,7 +1087,7 @@
                                 <div class="img-preview-grid mb-2" id="existingGallery">
                                     @foreach ($product->images as $img)
                                         <div class="existing-img" id="existingImg_{{ $img->id }}">
-                                            <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}">
+                                            <img src="{{ Storage::url($img->image_path) }}">
                                             <button type="button" class="del-img"
                                                 data-gallery-image-delete
                                                 data-image-id="{{ $img->id }}"

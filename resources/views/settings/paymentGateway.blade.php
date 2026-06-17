@@ -76,18 +76,6 @@
                                     </div>
                                 </div>
 
-                                <div class="col-sm-6">
-                                    <label for="razorpay_key_id" class="form-label fw-semibold text-primary-light text-md mb-8">Key ID <span class="text-danger-600">*</span></label>
-                                    <input type="text" class="form-control radius-8" id="razorpay_key_id" name="razorpay_key_id" placeholder="Razorpay Key ID"
-                                        value="{{ $gateways->firstWhere('gateway_name', 'razorpay')?->api_key ?? '' }}">
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <label for="razorpay_key_secret" class="form-label fw-semibold text-primary-light text-md mb-8">Key Secret <span class="text-danger-600">*</span></label>
-                                    <input type="password" class="form-control radius-8" id="razorpay_key_secret" name="razorpay_key_secret" placeholder="Razorpay Key Secret"
-                                        value="{{ $gateways->firstWhere('gateway_name', 'razorpay')?->secret_key ?? '' }}">
-                                </div>
-
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary border border-primary-600 text-md px-24 py-8 radius-8 w-100 text-center">
                                         Save Changes
@@ -137,18 +125,6 @@
                                             <label for="cashfree_production" class="form-label fw-medium text-lg text-primary-light mb-0">Production</label>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <label for="cashfree_app_id" class="form-label fw-semibold text-primary-light text-md mb-8">App ID <span class="text-danger-600">*</span></label>
-                                    <input type="text" class="form-control radius-8" id="cashfree_app_id" name="cashfree_app_id" placeholder="Cashfree App ID"
-                                        value="{{ $gateways->firstWhere('gateway_name', 'cashfree')?->api_key ?? '' }}">
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <label for="cashfree_secret_key" class="form-label fw-semibold text-primary-light text-md mb-8">Secret Key <span class="text-danger-600">*</span></label>
-                                    <input type="password" class="form-control radius-8" id="cashfree_secret_key" name="cashfree_secret_key" placeholder="Cashfree Secret Key"
-                                        value="{{ $gateways->firstWhere('gateway_name', 'cashfree')?->secret_key ?? '' }}">
                                 </div>
 
                                 <div class="col-12">
@@ -203,6 +179,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var statusBox = document.getElementById('paymentGatewayStatus');
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
     function showStatus(message, isSuccess) {
         if (!statusBox) return;
@@ -225,9 +203,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             fetch('{{ route('paymentGateway.status') }}', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
@@ -236,8 +216,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
             })
                 .then(function (response) {
+                    if (response.status === 419) {
+                        throw new Error('Session expired. Please refresh the page and try again.');
+                    }
+
                     return response.json().then(function (data) {
                         return { ok: response.ok, data: data };
+                    }).catch(function () {
+                        return { ok: response.ok, data: { message: 'Unable to update payment gateway status.' } };
                     });
                 })
                 .then(function (result) {

@@ -86,8 +86,8 @@
                                 <label for="description" class="form-label">Description *</label>
                                 <textarea name="description" id="description" class="form-control" rows="4"
                                           placeholder="Please provide details about why you're returning this order..."
-                                          required maxlength="500"></textarea>
-                                <small class="text-muted">Maximum 500 characters</small>
+                                          required minlength="10" maxlength="500">{{ old('description') }}</textarea>
+                                <small class="text-muted">Minimum 10 characters, maximum 500 characters</small>
                             </div>
 
                             <div class="mb-3">

@@ -1,6 +1,10 @@
 @extends('layout.frontlayout')
 @section('title', $product->meta_title ?? $product->name . ' – Bharat Biomer')
 
+@php
+  $featuredImageUrl = $product->featured_image ? Storage::url($product->featured_image) : null;
+@endphp
+
 @push('meta')
   <meta name="description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic products from Bharat Biomer' }}">
   <meta name="keywords" content="{{ $product->meta_keyword ?? $product->name . ', organic, products' }}">
@@ -11,16 +15,16 @@
   <meta property="og:title" content="{{ $product->meta_title ?? $product->name }}">
   <meta property="og:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
   <meta property="og:url" content="{{ url()->current() }}">
-  @if($product->featured_image)
-    <meta property="og:image" content="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}">
+  @if($featuredImageUrl)
+    <meta property="og:image" content="{{ url($featuredImageUrl) }}">
   @endif
   
   {{-- Twitter Card Tags --}}
   <meta name="twitter:card" content="product">
   <meta name="twitter:title" content="{{ $product->meta_title ?? $product->name }}">
   <meta name="twitter:description" content="{{ $product->meta_description ?? $product->short_description ?? 'Premium organic product' }}">
-  @if($product->featured_image)
-    <meta name="twitter:image" content="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}">
+  @if($featuredImageUrl)
+    <meta name="twitter:image" content="{{ url($featuredImageUrl) }}">
   @endif
   
   {{-- Product Schema.org Structured Data --}}
@@ -30,7 +34,7 @@
     "@type": "Product",
     "name": "{{ $product->name }}",
     "description": "{{ $product->meta_description ?? $product->short_description ?? $product->description }}",
-    "image": "{{ $product->featured_image ? request()->getBaseUrl() . '/storage/' . ltrim($product->featured_image, '/') : asset('assets/images/product-bottle.svg') }}",
+    "image": "{{ $featuredImageUrl ? url($featuredImageUrl) : asset('assets/images/product-bottle.svg') }}",
     "brand": {
       "@type": "Brand",
       "name": "{{ $product->brand->name ?? 'Bharat Biomer' }}"
@@ -51,7 +55,7 @@
 @endpush
 
 @section('content')
-<div class="pd-page"
+<div class="pd-page pd-no-motion"
      data-cart-add-url="{{ route('cart.add') }}"
      data-review-store-url="{{ route('reviews.store', $product) }}">
 
@@ -76,12 +80,12 @@
             <div class="row g-0">
 
               <!-- ── LEFT: Images ── -->
-              <div class="col-12 col-md-5">
+              <div class="col-12 col-md-5 pd__gallery-column">
 
                 {{-- Main Image --}}
                 <div class="pd__img-main-wrap">
-                  @if($product->featured_image)
-                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
+                  @if($featuredImageUrl)
+                    <img src="{{ $featuredImageUrl }}"
                          alt="{{ $product->name }}"
                          class="avan__product-img"
                          id="mainImage">
@@ -96,15 +100,15 @@
                 {{-- Gallery Thumbnails --}}
                 @if($product->images->count())
                 <div class="pd__thumbs">
-                  @if($product->featured_image)
-                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}"
+                  @if($featuredImageUrl)
+                    <img src="{{ $featuredImageUrl }}"
                          class="pd__thumb pd__thumb--active"
-                         onclick="changeImage(this, '{{ request()->getBaseUrl() }}/storage/{{ ltrim($product->featured_image, '/') }}')">
+                         onclick="changeImage(this, '{{ $featuredImageUrl }}')">
                   @endif
                   @foreach($product->images as $img)
-                    <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}"
+                    <img src="{{ Storage::url($img->image_path) }}"
                          class="pd__thumb"
-                         onclick="changeImage(this, '{{ request()->getBaseUrl() }}/storage/{{ ltrim($img->image_path, '/') }}')">
+                         onclick="changeImage(this, '{{ Storage::url($img->image_path) }}')">
                   @endforeach
                 </div>
                 @endif
@@ -189,10 +193,10 @@
                                data-stock="{{ $var->stock_quantity }}"
                                data-value="{{ $var->attribute_value }}"
                                data-unit="{{ $var->unit ?? $product->unit }}"
-                               data-image="{{ $var->image_path ? request()->getBaseUrl() . '/storage/' . ltrim($var->image_path, '/') : '' }}"
+                               data-image="{{ $var->image_path ? Storage::url($var->image_path) : '' }}"
                                onclick="selectVariation(this)">
                             @if($var->image_path)
-                              <img src="{{ request()->getBaseUrl() }}/storage/{{ ltrim($var->image_path, '/') }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
+                              <img src="{{ Storage::url($var->image_path) }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
                             @else
                               <img src="{{ asset('assets/images/product-bottle.svg') }}" alt="{{ $var->attribute_value }}" class="pd__variant-card-img">
                             @endif
@@ -222,7 +226,7 @@
                   <div class="pd__cta-wrap">
                     <button class="pd__cta-btn pd__cta-btn--primary" id="addToCartBtn"
                             data-product-id="{{ $product->id }}">
-                      <iconify-icon icon="fa6-solid:cart-shopping" class="btn-icon"></iconify-icon>
+                      <i class="ri-shopping-cart-2-line btn-icon" aria-hidden="true"></i>
                       <span>Add to Cart</span>
                     </button>
                     <a href="{{ route('products.index') }}" class="pd__cta-btn pd__cta-btn--outline">
@@ -471,7 +475,7 @@
             </div>
 
             <textarea id="reviewText" class="rv__textarea form-control mb-3" rows="3"
-                      placeholder="Share your experience with this product (optional)…" maxlength="1000"></textarea>
+                      placeholder="Share your experience with this product" minlength="3" maxlength="1000" required></textarea>
             <button class="pd__cta-btn pd__cta-btn--primary" id="submitReviewBtn" style="width:auto;padding:10px 28px;">
               Submit Review
             </button>
@@ -523,35 +527,83 @@
 @push('styles')
 <style>
   /* ── Animation for validation feedback ────────────── */
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+  /* ── Gallery Layout ────────────────────────── */
+  .pd__gallery-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 30px;
+    background: #fafdf8; /* Soft green-white tint to match the bio-organic theme */
+    border-right: 1.5px solid #e8f0e4;
+  }
+  
+  @media (max-width: 767.98px) {
+    .pd__gallery-column {
+      border-right: none;
+      border-bottom: 1.5px solid #e8f0e4;
+      padding: 20px;
+    }
   }
 
-  /* ── Image Gallery ─────────────────────────── */
   .pd__img-main-wrap {
     position: relative;
     overflow: hidden;
+    width: 100%;
+    max-width: 380px; /* Elegant, scaled-down size */
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+    border: 1px solid #e2ebd9;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(45, 122, 69, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
+  
+  .pd__img-main-wrap:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 35px rgba(45, 122, 69, 0.12);
+  }
+
+  .avan__product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+    border-radius: 15px;
+  }
+
   .pd__thumbs {
     display: flex;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 12px;
+    padding: 16px 0 0 0;
+    justify-content: center;
     flex-wrap: wrap;
+    width: 100%;
+    max-width: 380px;
   }
+
   .pd__thumb {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 8px;
+    width: 64px;
+    height: 64px;
+    object-fit: fill;
+    border-radius: 10px;
     border: 2px solid #e8f0e4;
     cursor: pointer;
-    transition: border-color 0.2s;
+    background: #ffffff;
+    transition: all 0.2s ease;
   }
-  .pd__thumb--active,
+
   .pd__thumb:hover {
     border-color: #2d7a45;
+    transform: scale(1.05);
+  }
+
+  .pd__thumb--active {
+    border-color: #2d7a45;
+    box-shadow: 0 0 0 3px rgba(45, 122, 69, 0.15);
   }
 
   /* ── Price Box ─────────────────────────────── */
@@ -808,6 +860,15 @@
   
   .rv__textarea { border: 1.5px solid #c8e6c9; border-radius: 10px; resize: vertical; font-size: 0.9rem; }
   .rv__textarea:focus { border-color: #2d7a45; box-shadow: 0 0 0 3px rgba(45,122,69,.12); outline: none; }
+
+  .pd-no-motion,
+  .pd-no-motion *,
+  .pd-no-motion *::before,
+  .pd-no-motion *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 
   .rv__item {
     border-bottom: 1px solid #e8f0e4;

@@ -179,16 +179,27 @@ class BlogController extends Controller
                 ->with('error', 'Please login to continue.');
         }
 
+        $request->merge([
+            'comment' => trim((string) $request->input('comment', '')),
+        ]);
+
         $rules = [
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'required|string|max:1000',
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['required', 'string', 'min:3', 'max:1000'],
         ];
 
         if (filled(config('services.recaptcha.secret_key'))) {
             $rules['g-recaptcha-response'] = 'required|string';
         }
 
-        $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'rating.required' => 'Please select a rating.',
+            'rating.min' => 'Please select a valid rating.',
+            'rating.max' => 'Please select a valid rating.',
+            'comment.required' => 'Please enter your comment.',
+            'comment.min' => 'Comment must be at least 3 characters.',
+            'comment.max' => 'Comment cannot be more than 1000 characters.',
+        ]);
 
         if (
             filled(config('services.recaptcha.secret_key'))
@@ -214,8 +225,8 @@ class BlogController extends Controller
             'customer_id' => $customer->id,
             'name' => $customer->name,
             'email' => $customer->email,
-            'rating' => $request->rating,
-            'comment' => $request->comment,
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'],
             'status' => 'pending',
         ]);
 

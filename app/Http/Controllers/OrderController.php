@@ -60,15 +60,29 @@ class OrderController extends Controller
     // ── Shared: Validate & Check Stock ────────────────────────────────
     private function validateCheckoutRequest(Request $request)
     {
+        $request->merge([
+            'name' => trim((string) $request->input('name', '')),
+            'phone' => trim((string) $request->input('phone', '')),
+            'email' => trim((string) $request->input('email', '')),
+            'address' => trim((string) $request->input('address', '')),
+            'city' => trim((string) $request->input('city', '')),
+            'state' => trim((string) $request->input('state', '')),
+            'pincode' => trim((string) $request->input('pincode', '')),
+            'notes' => trim((string) $request->input('notes', '')),
+        ]);
+
         $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
+            'name' => 'required|string|min:2|max:255',
+            'phone' => ['required', 'string', 'regex:/^[0-9+\-\s()]{7,20}$/'],
             'email' => 'nullable|email|max:255',
-            'address' => 'required|string|max:500',
-            'city' => 'required|string|max:100',
+            'address' => 'required|string|min:10|max:500',
+            'city' => 'required|string|min:2|max:100',
             'state' => 'required|string|max:100',
-            'pincode' => 'required|string|max:10',
+            'pincode' => ['required', 'string', 'regex:/^[1-9][0-9]{5}$/'],
             'notes' => 'nullable|string|max:500',
+        ], [
+            'phone.regex' => 'Please enter a valid phone number.',
+            'pincode.regex' => 'Please enter a valid 6-digit PIN code.',
         ]);
     }
 
@@ -114,13 +128,31 @@ class OrderController extends Controller
             : 'https://sandbox.cashfree.com/pg';
     }
 
+    private function razorpayCredentials(PaymentGateway $gateway): array
+    {
+        return [
+            'key_id' => config('razorpay.key_id') ?: $gateway->api_key,
+            'key_secret' => config('razorpay.key_secret') ?: $gateway->secret_key,
+        ];
+    }
+
+    private function cashfreeCredentials(PaymentGateway $gateway): array
+    {
+        return [
+            'app_id' => config('cashfree.app_id') ?: $gateway->api_key,
+            'secret_key' => config('cashfree.secret_key') ?: $gateway->secret_key,
+        ];
+    }
+
     private function cashfreeRequest(PaymentGateway $gateway)
     {
+        $credentials = $this->cashfreeCredentials($gateway);
+
         return Http::withOptions([
             'proxy' => '',
         ])->timeout(30)->connectTimeout(10)->withHeaders([
-            'x-client-id' => $gateway->api_key,
-            'x-client-secret' => $gateway->secret_key,
+            'x-client-id' => $credentials['app_id'],
+            'x-client-secret' => $credentials['secret_key'],
             'x-api-version' => '2023-08-01',
         ]);
     }
@@ -245,6 +277,187 @@ class OrderController extends Controller
 
         return $orderNumber ?? '';
 
+    }
+
+    private function createPendingOnlineOrder(array $checkoutData, array $cart, string $gateway, array $paymentIds, ?string $reservationToken = null): Order
+    {
+        $this->syncCustomerAddress($checkoutData);
+        $this->releaseExpiredStockReservations();
+
+        return DB::transaction(function () use ($checkoutData, $cart, $gateway, $paymentIds, $reservationToken) {
+            $customer = $this->customer();
+            $this->assertCurrentCartPrices($cart);
+            $coupon = $this->validatedCouponForOrder($cart);
+            $totals = $this->calculateCartTotals($cart, $coupon);
+
+            if ($reservationToken) {
+                $this->consumeStockReservation($cart, $reservationToken);
+            } else {
+                $this->reserveStock($cart);
+            }
+
+            $order = Order::create(array_merge([
+                'customer_id' => $customer->id,
+                'order_number' => 'BB-' . strtoupper(uniqid()),
+                'name' => $checkoutData['name'],
+                'phone' => $checkoutData['phone'],
+                'email' => $checkoutData['email'] ?? $customer->email,
+                'address' => $checkoutData['address'],
+                'city' => $checkoutData['city'],
+                'state' => $checkoutData['state'],
+                'pincode' => $checkoutData['pincode'],
+                'notes' => $checkoutData['notes'] ?? null,
+                'total_amount' => $totals['total'],
+                'shipping_amount' => $totals['shippingTotal'],
+                'tax_amount' => $totals['taxAmount'],
+                'coupon_id' => $coupon['id'] ?? null,
+                'discount_amount' => $totals['discount'],
+                'net_amount' => $totals['total'],
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'payment_gateway' => $gateway,
+            ], $paymentIds));
+
+            $this->createOrderItems($order, $cart);
+
+            session()->put('pending_order_number', $order->order_number);
+
+            return $order;
+        });
+    }
+
+    private function createOrderItems(Order $order, array $cart): void
+    {
+        foreach ($cart as $item) {
+            $product = Product::find($item['product_id']);
+            $gstRate = (float) ($product?->tax_rate ?? $product?->gst_rate ?? 0);
+            $lineSubtotal = (float) $item['price'] * (int) $item['quantity'];
+            $lineTax = $gstRate > 0 ? ($lineSubtotal * $gstRate / 100) : 0;
+
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $item['product_id'],
+                'variation_id' => $item['variation_id'] ?? null,
+                'product_name' => $item['name'],
+                'variation_name' => $item['variation'] ?? null,
+                'sku' => $item['sku'] ?? null,
+                'unit_price' => $item['price'],
+                'quantity' => $item['quantity'],
+                'subtotal' => $lineSubtotal,
+                'shipping_charge' => $item['shipping_charge'] ?? 0,
+                'gst_rate' => $gstRate,
+                'tax_amount' => $lineTax,
+                'net_price' => $lineSubtotal,
+            ]);
+        }
+    }
+
+    private function completePaidOrder(Order $order, array $paymentIds = []): bool
+    {
+        $completed = false;
+
+        DB::transaction(function () use ($order, $paymentIds, &$completed) {
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedOrder->payment_status === 'paid') {
+                return;
+            }
+
+            if (!empty($paymentIds['razorpay_payment_id']) && Order::where('razorpay_payment_id', $paymentIds['razorpay_payment_id'])->whereKeyNot($lockedOrder->id)->exists()) {
+                throw new \RuntimeException('This Razorpay payment has already been processed for another order.');
+            }
+
+            if (!empty($paymentIds['cashfree_payment_id']) && Order::where('cashfree_payment_id', $paymentIds['cashfree_payment_id'])->whereKeyNot($lockedOrder->id)->exists()) {
+                throw new \RuntimeException('This Cashfree payment has already been processed for another order.');
+            }
+
+            $lockedOrder->fill(array_merge([
+                'status' => 'confirmed',
+                'payment_status' => 'paid',
+            ], array_filter($paymentIds, fn ($value) => filled($value))));
+            $lockedOrder->save();
+
+            if ($lockedOrder->coupon_id) {
+                Coupon::where('id', $lockedOrder->coupon_id)->increment('used_count');
+            }
+
+            $completed = true;
+        });
+
+        if ($completed) {
+            $freshOrder = $order->fresh(['items']);
+
+            try {
+                Mail::to($freshOrder->email)->send(new OrderSuccess($freshOrder));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order success email: ' . $e->getMessage());
+            }
+
+            $this->pushPaidOrderToShiprocket($freshOrder);
+        }
+
+        return $completed;
+    }
+
+    private function failPendingOrder(Order $order, string $reason = 'Payment failed'): bool
+    {
+        $failed = false;
+
+        DB::transaction(function () use ($order, &$failed) {
+            $lockedOrder = Order::with('items')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedOrder->payment_status !== 'pending') {
+                return;
+            }
+
+            foreach ($lockedOrder->items as $item) {
+                if ($item->variation_id) {
+                    $variation = ProductVariation::with('product')->find($item->variation_id);
+                    if ($variation && $variation->product?->manage_stock) {
+                        $variation->increment('stock_quantity', $item->quantity);
+                    }
+                    continue;
+                }
+
+                $product = Product::withCount('variations')->find($item->product_id);
+                if ($product && $product->manage_stock && $product->variations_count === 0) {
+                    $product->increment('stock_quantity', $item->quantity);
+                }
+            }
+
+            $lockedOrder->update([
+                'status' => 'cancelled',
+                'payment_status' => 'failed',
+            ]);
+
+            $failed = true;
+        });
+
+        if ($failed) {
+            try {
+                Mail::to($order->email)->send(new OrderFailed($order->fresh(), $reason));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order failed email: ' . $e->getMessage());
+            }
+        }
+
+        return $failed;
+    }
+
+    private function pushPaidOrderToShiprocket(Order $order): void
+    {
+        if ($order->shiprocket_order_id) {
+            return;
+        }
+
+        try {
+            $result = $this->shiprocket->createOrder($order->loadMissing('items'));
+            if (!empty($result['order_id'])) {
+                $order->update(['shiprocket_order_id' => $result['order_id']]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Shiprocket push failed: ' . $e->getMessage());
+        }
     }
 
     private function assertCurrentCartPrices(array $cart): void
@@ -582,8 +795,9 @@ class OrderController extends Controller
             return response()->json(['error' => 'Razorpay is disabled. Please select an enabled payment method.'], 422);
         }
 
-        if (empty($gateway->api_key) || empty($gateway->secret_key)) {
-            return response()->json(['error' => 'Razorpay credentials are not configured in Payment Gateway settings.'], 500);
+        $credentials = $this->razorpayCredentials($gateway);
+        if (empty($credentials['key_id']) || empty($credentials['key_secret'])) {
+            return response()->json(['error' => 'Razorpay credentials are not configured in .env.'], 500);
         }
 
         $this->validateCheckoutRequest($request);
@@ -602,7 +816,7 @@ class OrderController extends Controller
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        $api = new Api($gateway->api_key, $gateway->secret_key);
+        $api = new Api($credentials['key_id'], $credentials['key_secret']);
         try {
             $razorpayOrder = $api->order->create([
                 'receipt' => 'BB-' . strtoupper(uniqid()),
@@ -622,12 +836,29 @@ class OrderController extends Controller
         $this->storeCheckoutSession($request);
         $customer = $this->customer();
 
+        try {
+            $pendingOrder = $this->createPendingOnlineOrder(
+                session()->get('checkout_data'),
+                $cart,
+                'razorpay',
+                ['razorpay_order_id' => $razorpayOrder->id],
+                $reservationToken
+            );
+        } catch (\RuntimeException $e) {
+            if ($reservationToken) {
+                $this->releaseStockReservation($reservationToken);
+            }
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
         return response()->json([
             'success' => true,
+            'order_number' => $pendingOrder->order_number,
             'razorpay_order_id' => $razorpayOrder->id,
             'amount' => (int)round($total * 100),
             'currency' => 'INR',
-            'key_id' => $gateway->api_key,
+            'key_id' => $credentials['key_id'],
             'stock_reservation_expires_at' => session()->get('stock_reservation_expires_at'),
             'name' => $customer->name,
             'email' => $customer->email,
@@ -643,13 +874,18 @@ class OrderController extends Controller
             return response()->json(['error' => 'Razorpay is disabled. Please select an enabled payment method.'], 422);
         }
 
+        $credentials = $this->razorpayCredentials($gateway);
+        if (empty($credentials['key_id']) || empty($credentials['key_secret'])) {
+            return response()->json(['error' => 'Razorpay credentials are not configured in .env.'], 500);
+        }
+
         $request->validate([
             'razorpay_order_id' => 'required|string',
             'razorpay_payment_id' => 'required|string',
             'razorpay_signature' => 'required|string',
         ]);
 
-        $api = new Api($gateway->api_key, $gateway->secret_key);
+        $api = new Api($credentials['key_id'], $credentials['key_secret']);
         try {
             $api->utility->verifyPaymentSignature([
                 'razorpay_order_id' => $request->razorpay_order_id,
@@ -661,21 +897,10 @@ class OrderController extends Controller
             return response()->json(['error' => 'Payment verification failed. Please try again.'], 400);
         }
 
-        $checkoutData = session()->get('checkout_data');
-        if (!$checkoutData)
-            return response()->json(['error' => 'Session expired. Please try again.'], 422);
-
-        $cart = session()->get('cart', []);
-        if (empty($cart))
-            return response()->json(['error' => 'Your cart is empty.'], 422);
-
-        $reservationToken = session()->get('stock_reservation_token');
-        if (!$reservationToken && $this->cartRequiresStockReservation($cart))
-            return response()->json(['error' => 'Your stock reservation has expired. Please start checkout again.'], 422);
-
-        $coupon = session()->get('coupon');
-        $totals = $this->calculateCartTotals($cart, $coupon);
-        $total = $totals['total'];
+        $order = Order::where('razorpay_order_id', $request->razorpay_order_id)->first();
+        if (!$order) {
+            return response()->json(['error' => 'Order not found for this payment. Please contact support.'], 404);
+        }
 
         try {
             $paymentIds = [
@@ -683,7 +908,7 @@ class OrderController extends Controller
                 'razorpay_payment_id' => $request->razorpay_payment_id,
             ];
 
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'razorpay', $paymentIds, $reservationToken);
+            $this->completePaidOrder($order, $paymentIds);
         } catch (\RuntimeException $e) {
             return $this->paidStockFailureResponse($request, 'razorpay', $paymentIds ?? [
                 'razorpay_order_id' => $request->razorpay_order_id,
@@ -691,15 +916,9 @@ class OrderController extends Controller
             ], $e);
         }
 
-        // Send order success email
-        $order = Order::where('order_number', $orderNumber)->first();
-        try {
-            Mail::to($order->email)->send(new OrderSuccess($order));
-        } catch (\Exception $e) {
-            Log::error('Failed to send order success email: ' . $e->getMessage());
-        }
+        session()->forget(['cart', 'checkout_data', 'coupon', 'stock_reservation_token', 'stock_reservation_expires_at', 'pending_order_number']);
 
-        return response()->json(['success' => true, 'redirect_url' => route('order.success', $orderNumber)]);
+        return response()->json(['success' => true, 'redirect_url' => route('order.success', $order->order_number)]);
     }
 
     // ── CASHFREE: Step 1 — Create Order ───────────────────────────────
@@ -710,8 +929,9 @@ class OrderController extends Controller
             return response()->json(['error' => 'Cashfree is disabled. Please select an enabled payment method.'], 422);
         }
 
-        if (empty($gateway->api_key) || empty($gateway->secret_key)) {
-            return response()->json(['error' => 'Cashfree credentials are not configured in Payment Gateway settings.'], 500);
+        $credentials = $this->cashfreeCredentials($gateway);
+        if (empty($credentials['app_id']) || empty($credentials['secret_key'])) {
+            return response()->json(['error' => 'Cashfree credentials are not configured in .env.'], 500);
         }
 
         $this->validateCheckoutRequest($request);
@@ -782,8 +1002,25 @@ class OrderController extends Controller
         //   tampered with (prevents cross-user order_id hijacking).
         session()->put('cashfree_pending_order_id', $orderId);
 
+        try {
+            $pendingOrder = $this->createPendingOnlineOrder(
+                session()->get('checkout_data'),
+                $cart,
+                'cashfree',
+                ['cashfree_order_id' => $orderId],
+                $reservationToken
+            );
+        } catch (\RuntimeException $e) {
+            if ($reservationToken) {
+                $this->releaseStockReservation($reservationToken);
+            }
+            session()->forget(['stock_reservation_token', 'stock_reservation_expires_at']);
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
         return response()->json([
             'success' => true,
+            'order_number' => $pendingOrder->order_number,
             'payment_session_id' => $data['payment_session_id'],
             'cashfree_order_id' => $data['order_id'],
             'stock_reservation_expires_at' => session()->get('stock_reservation_expires_at'),
@@ -796,6 +1033,11 @@ class OrderController extends Controller
         $gateway = $this->enabledGateway('cashfree');
         if (!$gateway) {
             return response()->json(['error' => 'Cashfree is disabled. Please select an enabled payment method.'], 422);
+        }
+
+        $credentials = $this->cashfreeCredentials($gateway);
+        if (empty($credentials['app_id']) || empty($credentials['secret_key'])) {
+            return response()->json(['error' => 'Cashfree credentials are not configured in .env.'], 500);
         }
 
         $orderId          = $request->input('order_id');
@@ -833,21 +1075,10 @@ class OrderController extends Controller
             return response()->json(['error' => 'Payment not completed.'], 400);
         }
 
-        $checkoutData = session()->get('checkout_data');
-        if (!$checkoutData)
-            return response()->json(['error' => 'Session expired. Please try again.'], 422);
-
-        $cart = session()->get('cart', []);
-        if (empty($cart))
-            return response()->json(['error' => 'Your cart is empty.'], 422);
-
-        $reservationToken = session()->get('stock_reservation_token');
-        if (!$reservationToken && $this->cartRequiresStockReservation($cart))
-            return response()->json(['error' => 'Your stock reservation has expired. Please start checkout again.'], 422);
-
-        $coupon = session()->get('coupon');
-        $totals = $this->calculateCartTotals($cart, $coupon);
-        $total = $totals['total'];
+        $order = Order::where('cashfree_order_id', $orderId)->first();
+        if (!$order) {
+            return response()->json(['error' => 'Order not found for this payment. Please contact support.'], 404);
+        }
 
         // Get payment ID from payments list
         $paymentsRes = $this->cashfreeRequest($gateway)
@@ -863,7 +1094,7 @@ class OrderController extends Controller
                 'cashfree_payment_id' => (string)$cfPaymentId,
             ];
 
-            $orderNumber = $this->createOrderInDB($checkoutData, $cart, 'cashfree', $paymentIds, $reservationToken);
+            $this->completePaidOrder($order, $paymentIds);
         } catch (\RuntimeException $e) {
             return $this->paidStockFailureResponse($request, 'cashfree', $paymentIds ?? [
                 'cashfree_order_id' => $orderId,
@@ -871,22 +1102,110 @@ class OrderController extends Controller
             ], $e);
         }
 
-        // Send order success email
-        $order = Order::where('order_number', $orderNumber)->first();
-        try {
-            Mail::to($order->email)->send(new OrderSuccess($order));
-        } catch (\Exception $e) {
-            Log::error('Failed to send order success email: ' . $e->getMessage());
-        }
+        session()->forget(['cart', 'checkout_data', 'coupon', 'stock_reservation_token', 'stock_reservation_expires_at', 'cashfree_pending_order_id', 'pending_order_number']);
 
         if ($request->wantsJson()) {
-            return response()->json(['success' => true, 'redirect_url' => route('order.success', $orderNumber)]);
+            return response()->json(['success' => true, 'redirect_url' => route('order.success', $order->order_number)]);
         }
 
-        return redirect()->route('order.success', $orderNumber);
+        return redirect()->route('order.success', $order->order_number);
     }
 
     // ── COD: Place Order Directly ──────────────────────────────────────
+    public function razorpayWebhook(Request $request)
+    {
+        $secret = (string) config('razorpay.webhook_secret');
+        if ($secret === '') {
+            Log::error('Razorpay webhook secret is not configured.');
+            return response()->json(['error' => 'Webhook secret is not configured.'], 500);
+        }
+
+        $body = $request->getContent();
+        $signature = (string) $request->header('X-Razorpay-Signature', '');
+        $expected = hash_hmac('sha256', $body, $secret);
+
+        if ($signature === '' || !hash_equals($expected, $signature)) {
+            Log::warning('Razorpay webhook signature verification failed.');
+            return response()->json(['error' => 'Invalid signature.'], 400);
+        }
+
+        $payload = $request->json()->all();
+        $event = (string) ($payload['event'] ?? '');
+        $payment = $payload['payload']['payment']['entity'] ?? [];
+        $gatewayOrder = $payload['payload']['order']['entity'] ?? [];
+        $razorpayOrderId = $payment['order_id'] ?? $gatewayOrder['id'] ?? null;
+        $razorpayPaymentId = $payment['id'] ?? null;
+
+        if (!$razorpayOrderId) {
+            return response()->json(['received' => true]);
+        }
+
+        $order = Order::where('razorpay_order_id', $razorpayOrderId)->first();
+        if (!$order) {
+            Log::warning('Razorpay webhook order not found.', ['razorpay_order_id' => $razorpayOrderId, 'event' => $event]);
+            return response()->json(['received' => true]);
+        }
+
+        if (in_array($event, ['payment.captured', 'order.paid'], true) || ($payment['status'] ?? '') === 'captured') {
+            $this->completePaidOrder($order, [
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+            ]);
+        } elseif ($event === 'payment.failed' || ($payment['status'] ?? '') === 'failed') {
+            $this->failPendingOrder($order, $payment['error_description'] ?? 'Razorpay payment failed');
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    public function cashfreeWebhook(Request $request)
+    {
+        $secret = (string) (config('cashfree.webhook_secret') ?: config('cashfree.secret_key'));
+        if ($secret === '') {
+            Log::error('Cashfree webhook secret is not configured.');
+            return response()->json(['error' => 'Webhook secret is not configured.'], 500);
+        }
+
+        $body = $request->getContent();
+        $timestamp = (string) $request->header('x-webhook-timestamp', '');
+        $signature = (string) $request->header('x-webhook-signature', '');
+        $expected = base64_encode(hash_hmac('sha256', $timestamp . $body, $secret, true));
+
+        if ($timestamp === '' || $signature === '' || !hash_equals($expected, $signature)) {
+            Log::warning('Cashfree webhook signature verification failed.');
+            return response()->json(['error' => 'Invalid signature.'], 400);
+        }
+
+        $payload = $request->json()->all();
+        $type = strtoupper((string) ($payload['type'] ?? $payload['event'] ?? ''));
+        $orderData = $payload['data']['order'] ?? $payload['order'] ?? [];
+        $paymentData = $payload['data']['payment'] ?? $payload['payment'] ?? [];
+        $cashfreeOrderId = $orderData['order_id'] ?? $paymentData['order_id'] ?? null;
+        $cashfreePaymentId = $paymentData['cf_payment_id'] ?? $paymentData['payment_id'] ?? null;
+        $paymentStatus = strtoupper((string) ($paymentData['payment_status'] ?? $orderData['order_status'] ?? ''));
+
+        if (!$cashfreeOrderId) {
+            return response()->json(['received' => true]);
+        }
+
+        $order = Order::where('cashfree_order_id', $cashfreeOrderId)->first();
+        if (!$order) {
+            Log::warning('Cashfree webhook order not found.', ['cashfree_order_id' => $cashfreeOrderId, 'type' => $type]);
+            return response()->json(['received' => true]);
+        }
+
+        if (str_contains($type, 'SUCCESS') || in_array($paymentStatus, ['SUCCESS', 'PAID'], true)) {
+            $this->completePaidOrder($order, [
+                'cashfree_order_id' => $cashfreeOrderId,
+                'cashfree_payment_id' => (string) $cashfreePaymentId,
+            ]);
+        } elseif (str_contains($type, 'FAILED') || in_array($paymentStatus, ['FAILED', 'CANCELLED', 'USER_DROPPED'], true)) {
+            $this->failPendingOrder($order, 'Cashfree payment failed');
+        }
+
+        return response()->json(['received' => true]);
+    }
+
     public function createCodOrder(Request $request)
     {
         if (!$this->enabledGateway('cod')) {

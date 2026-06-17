@@ -26,13 +26,13 @@
         <div class="d-flex flex-column gap-4">
 
          <!-- Location -->
-<a href="https://www.google.com/maps/search/India" target="_blank" class="conif__info-card conif__info-link">
+<a href="https://maps.app.goo.gl/ToPTPijVAi4PmLxo8?g_st=aw" target="_blank" rel="noopener" class="conif__info-card conif__info-link">
   <div class="conif__info-icon-wrap">
     <img src="../assets/images/location-icon.svg" alt="Location" class="conif__info-icon"/>
   </div>
   <div>
     <h5 class="conif__info-title">Location</h5>
-    <p class="conif__info-desc">India</p>
+    <p class="conif__info-desc">Haji Chand Patel Warehouse, Mangliya Road, near New Aurbindo Hospital, Jatpura, Dharampuri, Indore, Madhya Pradesh 453771</p>
   </div>
 </a>
 
@@ -154,6 +154,21 @@
             @enderror
           </div>
 
+          <div class="conif__field-wrap">
+            <label class="conif__label d-block">Security Check</label>
+            @if(config('services.recaptcha.site_key'))
+              <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+            @else
+              <div class="text-danger small">reCAPTCHA is not configured yet. Please add RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY.</div>
+            @endif
+            @error('g-recaptcha-response')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+            @error('recaptcha')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+          </div>
+
           <button type="submit" class="conif__submit-btn">Send Message</button>
         </form>
       </div>
@@ -171,7 +186,7 @@
       <div class="col-12">
         <div class="conmap__map-box">
   <iframe 
-    src="https://www.google.com/maps/embed?pb=YOUR_LOCATION_EMBED_URL" 
+    src="https://www.google.com/maps?q=Haji%20Chand%20Patel%20Warehouse%2C%20Mangliya%20Road%2C%20near%20New%20Aurbindo%20Hospital%2C%20Jatpura%2C%20Dharampuri%2C%20Indore%2C%20Madhya%20Pradesh%20453771&output=embed" 
     width="100%" 
     height="500" 
     style="border:0; border-radius:8px;" 
@@ -185,3 +200,9 @@
 </section>
 
 @endsection
+
+@push('scripts')
+  @if(config('services.recaptcha.site_key'))
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  @endif
+@endpush

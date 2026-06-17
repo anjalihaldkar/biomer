@@ -118,7 +118,7 @@
 
                                         <div class="col-12">
                                             <label class="form-label">Comment</label>
-                                            <textarea name="comment" class="rv__textarea form-control" rows="4" maxlength="1000" required>{{ old('comment') }}</textarea>
+                                            <textarea name="comment" class="rv__textarea form-control" rows="4" minlength="3" maxlength="1000" required>{{ old('comment') }}</textarea>
                                             @error('comment')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                         </div>
 

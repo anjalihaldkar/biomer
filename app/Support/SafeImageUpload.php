@@ -26,15 +26,16 @@ class SafeImageUpload
             ]);
         }
 
-        $mimeType = $file->getMimeType();
+        $imageInfo = @getimagesize($file->getRealPath());
+        $mimeType = $imageInfo['mime'] ?? $file->getMimeType();
+
         if (!array_key_exists($mimeType, self::MIME_EXTENSIONS)) {
             throw ValidationException::withMessages([
                 'image' => 'Only JPG, PNG, WebP, and GIF images are allowed.',
             ]);
         }
 
-        $contents = file_get_contents($file->getRealPath());
-        if ($contents === false || preg_match('/<\?(php|=)/i', $contents)) {
+        if (!$imageInfo || empty($imageInfo[0]) || empty($imageInfo[1])) {
             throw ValidationException::withMessages([
                 'image' => 'The uploaded image content is invalid.',
             ]);
